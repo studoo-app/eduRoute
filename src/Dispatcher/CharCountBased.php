@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace FastRoute\Dispatcher;
 
 use FastRoute\Dispatcher\Result\Matched;
+use Override;
 
 use function assert;
 use function end;
@@ -13,6 +14,7 @@ use function preg_match;
 class CharCountBased extends RegexBasedAbstract
 {
     /** @inheritDoc */
+    #[Override]
     protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched
     {
         foreach ($routeData as $data) {

@@ -6,6 +6,7 @@ namespace FastRoute\Cache;
 use Closure;
 use FastRoute\Cache;
 use FastRoute\ConfigureRoutes;
+use Override;
 use RuntimeException;
 
 use function chmod;
@@ -41,22 +42,23 @@ final class FileCache implements Cache
     }
 
     /** @inheritdoc */
+    #[Override]
     public function get(string $key, callable $loader): array
     {
-        $result = self::readFileContents($key);
+        $result = $this->readFileContents($key);
 
         if ($result !== null) {
             return $result;
         }
 
         $data = $loader();
-        self::writeToFile($key, '<?php return ' . var_export($data, true) . ';');
+        $this->writeToFile($key, '<?php return ' . var_export($data, true) . ';');
 
         return $data;
     }
 
     /** @return ProcessedData|null */
-    private static function readFileContents(string $path): ?array
+    private function readFileContents(string $path): ?array
     {
         // error suppression is faster than calling `file_exists()` + `is_file()` + `is_readable()`, especially because there's no need to error here
         set_error_handler(self::$emptyErrorHandler);
@@ -71,11 +73,11 @@ final class FileCache implements Cache
         return $value;
     }
 
-    private static function writeToFile(string $path, string $content): void
+    private function writeToFile(string $path, string $content): void
     {
         $directory = dirname($path);
 
-        if (! self::createDirectoryIfNeeded($directory) || ! is_writable($directory)) {
+        if (! $this->createDirectoryIfNeeded($directory) || ! is_writable($directory)) {
             throw new RuntimeException('The cache directory is not writable "' . $directory . '"');
         }
 
@@ -98,7 +100,7 @@ final class FileCache implements Cache
         restore_error_handler();
     }
 
-    private static function createDirectoryIfNeeded(string $directory): bool
+    private function createDirectoryIfNeeded(string $directory): bool
     {
         if (is_dir($directory)) {
             return true;
@@ -108,6 +110,6 @@ final class FileCache implements Cache
         $created = mkdir($directory, self::DIRECTORY_PERMISSIONS, true);
         restore_error_handler();
 
-        return $created !== false || is_dir($directory);
+        return $created || is_dir($directory);
     }
 }

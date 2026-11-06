@@ -3,18 +3,22 @@ declare(strict_types=1);
 
 namespace FastRoute\DataGenerator;
 
+use Override;
+
 use function count;
 use function implode;
 
 /** @final */
 class GroupPosBased extends RegexBasedAbstract
 {
+    #[Override]
     protected function getApproxChunkSize(): int
     {
         return 10;
     }
 
     /** @inheritDoc */
+    #[Override]
     protected function processChunk(array $regexToRoutesMap): array
     {
         $routeMap = [];

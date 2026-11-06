@@ -18,13 +18,13 @@ final class Psr16CacheTest extends TestCase
         $generatedData = [['GET' => ['/' => ['test', []]]], [], []];
 
         $adapter = new Psr16Cache($this->createDummyCache($data));
-        $result = $adapter->get('test', static fn () => $generatedData);
+        $result = $adapter->get('test', static fn (): array => $generatedData);
 
         self::assertSame($generatedData, $result);
         self::assertSame($generatedData, $data['test']);
 
         // Try again, now with a different callback
-        $result = $adapter->get('test', static fn () => [['POST' => ['/' => ['test', []]]], [], []]);
+        $result = $adapter->get('test', static fn (): array => [['POST' => ['/' => ['test', []]]], [], []]);
 
         self::assertSame($generatedData, $result);
     }

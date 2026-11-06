@@ -76,11 +76,8 @@ jobs:
       - run: "vendor/bin/phpcs -q --report=checkstyle | cs2pr"
 
   rector:
-    name: "Rector (modernisation restante)"
+    name: "Rector (aucune modernisation en attente)"
     runs-on: "ubuntu-latest"
-    # Informatif tant que la phase 2 (modernisation PHP 8.4) n'est pas terminée.
-    # À rendre bloquant ensuite en supprimant cette ligne.
-    continue-on-error: true
     steps:
       - uses: "actions/checkout@v5"
       - uses: "shivammathur/setup-php@v2"

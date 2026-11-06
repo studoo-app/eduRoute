@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace FastRoute\DataGenerator;
 
+use Override;
+
 use function count;
 use function implode;
 use function max;
@@ -11,12 +13,14 @@ use function str_repeat;
 /** @final */
 class GroupCountBased extends RegexBasedAbstract
 {
+    #[Override]
     protected function getApproxChunkSize(): int
     {
         return 10;
     }
 
     /** @inheritDoc */
+    #[Override]
     protected function processChunk(array $regexToRoutesMap): array
     {
         $routeMap = [];

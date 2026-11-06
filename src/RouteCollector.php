@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace FastRoute;
 
+use Deprecated;
+use Override;
+
 use function array_key_exists;
 use function array_reverse;
 use function is_string;
@@ -28,6 +31,7 @@ class RouteCollector implements ConfigureRoutes
     }
 
     /** @inheritDoc */
+    #[Override]
     public function addRoute(string|array $httpMethod, string $route, mixed $handler, array $extraParameters = []): void
     {
         $route = $this->currentGroupPrefix . $route;
@@ -60,6 +64,7 @@ class RouteCollector implements ConfigureRoutes
         $this->namedRoutes[$name] = array_reverse($parsedRoutes);
     }
 
+    #[Override]
     public function addGroup(string $prefix, callable $callback): void
     {
         $previousGroupPrefix = $this->currentGroupPrefix;
@@ -69,54 +74,63 @@ class RouteCollector implements ConfigureRoutes
     }
 
     /** @inheritDoc */
+    #[Override]
     public function any(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('*', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function get(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('GET', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function post(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('POST', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function put(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('PUT', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function delete(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('DELETE', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function patch(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('PATCH', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function head(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('HEAD', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function options(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute('OPTIONS', $route, $handler, $extraParameters);
     }
 
     /** @inheritDoc */
+    #[Override]
     public function processedRoutes(): array
     {
         $data =  $this->dataGenerator->getData();
@@ -126,12 +140,13 @@ class RouteCollector implements ConfigureRoutes
     }
 
     /**
-     * @deprecated
+     * @deprecated since 1.0 (studoo/edu-route), will be removed in 2.0
      *
      * @see ConfigureRoutes::processedRoutes()
      *
      * @return ProcessedData
      */
+    #[Deprecated('use processedRoutes() instead', since: '1.0')]
     public function getData(): array
     {
         return $this->processedRoutes();

@@ -29,11 +29,10 @@ phpcs:
 phpstan:
 	@vendor/bin/phpstan analyse --memory-limit=-1
 
-# Signale le code encore modernisable (sans le modifier).
-# Informatif jusqu'à la fin de la phase 2 (préfixe "-") : supprimer le "-" ensuite.
+# Échoue si Rector propose encore des modernisations (à appliquer avec rector-fix)
 .PHONY: rector
 rector:
-	-@vendor/bin/rector process --dry-run
+	@vendor/bin/rector process --dry-run
 
 # Applique les modernisations proposées par Rector : relire le diff ensuite !
 .PHONY: rector-fix

@@ -8,6 +8,7 @@ use FastRoute\Dispatcher;
 use FastRoute\Dispatcher\Result\Matched;
 use FastRoute\Dispatcher\Result\MethodNotAllowed;
 use FastRoute\Dispatcher\Result\NotMatched;
+use Override;
 
 /**
  * @internal
@@ -35,6 +36,7 @@ abstract class RegexBasedAbstract implements Dispatcher
     /** @param DynamicRouteChunks $routeData */
     abstract protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched;
 
+    #[Override]
     public function dispatch(string $httpMethod, string $uri): Matched|NotMatched|MethodNotAllowed
     {
         if (isset($this->staticRouteMap[$httpMethod][$uri])) {
@@ -47,7 +49,7 @@ abstract class RegexBasedAbstract implements Dispatcher
 
         if (isset($this->variableRouteData[$httpMethod])) {
             $result = $this->dispatchVariableRoute($this->variableRouteData[$httpMethod], $uri);
-            if ($result !== null) {
+            if ($result instanceof Matched) {
                 return $result;
             }
         }
@@ -64,7 +66,7 @@ abstract class RegexBasedAbstract implements Dispatcher
 
             if (isset($this->variableRouteData['GET'])) {
                 $result = $this->dispatchVariableRoute($this->variableRouteData['GET'], $uri);
-                if ($result !== null) {
+                if ($result instanceof Matched) {
                     return $result;
                 }
             }
@@ -81,7 +83,7 @@ abstract class RegexBasedAbstract implements Dispatcher
 
         if (isset($this->variableRouteData['*'])) {
             $result = $this->dispatchVariableRoute($this->variableRouteData['*'], $uri);
-            if ($result !== null) {
+            if ($result instanceof Matched) {
                 return $result;
             }
         }
@@ -103,7 +105,7 @@ abstract class RegexBasedAbstract implements Dispatcher
             }
 
             $result = $this->dispatchVariableRoute($routeData, $uri);
-            if ($result === null) {
+            if (! $result instanceof Matched) {
                 continue;
             }
 

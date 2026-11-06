@@ -8,7 +8,7 @@ use FastRoute\RouteParser\Std;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
 
-class StdTest extends TestCase
+final class StdTest extends TestCase
 {
     /** @param non-empty-list<array<string|list<string>>> $expectedResult */
     #[PHPUnit\Test]

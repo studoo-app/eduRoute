@@ -1,13 +1,15 @@
 <?php
 declare(strict_types=1);
 
+use Rector\CodeQuality\Rector\Identical\SimplifyBoolIdenticalTrueRector;
 use Rector\Config\RectorConfig;
+use Rector\DeadCode\Rector\For_\RemoveDeadLoopRector;
 use Rector\PHPUnit\CodeQuality\Rector\Class_\PreferPHPUnitThisCallRector;
 
 /*
- * Rector sert d'assistant à la modernisation PHP 8.4 (phase 2).
- * En CI il tourne en "--dry-run" : il signale ce qui reste à moderniser
- * sans modifier le code. Pour appliquer : `make rector-fix`, puis relire le diff.
+ * Rector garantit que le code reste au niveau PHP 8.4.
+ * En CI il tourne en "--dry-run" et échoue si une modernisation est possible.
+ * Pour appliquer : `make rector-fix`, puis relire le diff (et lancer les tests !).
  */
 return RectorConfig::configure()
     ->withPaths([
@@ -26,8 +28,13 @@ return RectorConfig::configure()
         earlyReturn: true,
         phpunitCodeQuality: true,
     )
-    ->withImportNames(importShortClasses: false, removeUnusedImports: true)
     ->withSkip([
         // Le standard de code (lcobucci) impose self::assert*() dans les tests
         PreferPHPUnitThisCallRector::class,
+        // Supprime des boucles à corps vide qui ont un effet de bord (cf. ancien GroupPosBased)
+        RemoveDeadLoopRector::class,
+    ])
+    ->withSkip([
+        // Parité avec FastRoute d'origine : seul `true` (strict) désactive le cache, pas 1 ou '1'
+        SimplifyBoolIdenticalTrueRector::class => [__DIR__ . '/src/LegacyDispatcherFactory.php'],
     ]);

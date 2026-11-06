@@ -5,6 +5,7 @@ namespace FastRoute\RouteParser;
 
 use FastRoute\BadRouteException;
 use FastRoute\RouteParser;
+use Override;
 
 use function assert;
 use function count;
@@ -56,6 +57,7 @@ REGEX;
             ~x';
 
     /** @inheritDoc */
+    #[Override]
     public function parse(string $route): array
     {
         $routeWithoutClosingOptionals = rtrim($route, ']');

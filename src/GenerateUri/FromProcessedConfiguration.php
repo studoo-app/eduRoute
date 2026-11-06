@@ -5,6 +5,7 @@ namespace FastRoute\GenerateUri;
 
 use FastRoute\GenerateUri;
 use FastRoute\RouteParser;
+use Override;
 
 use function array_key_exists;
 use function array_keys;
@@ -18,14 +19,15 @@ use function preg_match;
  * @phpstan-import-type UriSubstitutions from GenerateUri
  * @phpstan-import-type ParsedRoute from RouteParser
  */
-final class FromProcessedConfiguration implements GenerateUri
+final readonly class FromProcessedConfiguration implements GenerateUri
 {
     /** @param RoutesForUriGeneration $processedConfiguration */
-    public function __construct(private readonly array $processedConfiguration)
+    public function __construct(private array $processedConfiguration)
     {
     }
 
     /** @inheritDoc */
+    #[Override]
     public function forRoute(string $name, array $substitutions = []): GeneratedUri
     {
         if (! array_key_exists($name, $this->processedConfiguration)) {

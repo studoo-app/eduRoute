@@ -9,6 +9,7 @@ use FastRoute\Dispatcher;
 use FastRoute\FastRoute;
 use FastRoute\GenerateUri;
 use Nyholm\Psr7\Uri;
+use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -18,7 +19,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function markShouldBeTheDefaultDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->dispatcher();
 
@@ -28,7 +29,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseCharCountDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useCharCountDispatcher()
             ->dispatcher();
@@ -39,7 +40,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseGroupPosDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useGroupPosDispatcher()
             ->dispatcher();
@@ -50,7 +51,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseGroupCountDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useGroupCountDispatcher()
             ->dispatcher();
@@ -61,7 +62,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseMarkDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useCharCountDispatcher()
             ->useMarkDispatcher()
@@ -75,6 +76,7 @@ final class FastRouteTest extends TestCase
     {
         $cache = new class () implements Cache {
             /** @inheritDoc */
+            #[Override]
             public function get(string $key, callable $loader): array
             {
                 if ($key === 'test') {
@@ -85,7 +87,7 @@ final class FastRouteTest extends TestCase
             }
         };
 
-        $dispatcher = FastRoute::recommendedSettings(self::routes(...), 'test2')
+        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test2')
             ->withCache($cache, 'test')
             ->dispatcher();
 
@@ -96,7 +98,7 @@ final class FastRouteTest extends TestCase
         self::assertSame(['test' => true], $result->extraParameters); // should use data from cache, not from loader
     }
 
-    private static function routes(ConfigureRoutes $collector): void
+    private function routes(ConfigureRoutes $collector): void
     {
         $collector->get('/', 'test');
     }
@@ -104,7 +106,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function defaultUriGeneratorMustBeProvided(): void
     {
-        $uriGenerator = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $uriGenerator = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->uriGenerator();
 
@@ -116,13 +118,14 @@ final class FastRouteTest extends TestCase
     {
         $generator = new class () implements GenerateUri {
             /** @inheritDoc */
+            #[Override]
             public function forRoute(string $name, array $substitutions = []): GenerateUri\GeneratedUri
             {
                 return new GenerateUri\GeneratedUri('/', $substitutions);
             }
         };
 
-        $uriGenerator = FastRoute::recommendedSettings(self::routes(...), 'test')
+        $uriGenerator = FastRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->withUriGenerator($generator::class)
             ->uriGenerator();

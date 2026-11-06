@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace FastRoute\Dispatcher;
 
 use FastRoute\Dispatcher\Result\Matched;
+use Override;
 
 use function count;
 use function preg_match;
@@ -12,6 +13,7 @@ use function preg_match;
 class GroupCountBased extends RegexBasedAbstract
 {
     /** @inheritDoc */
+    #[Override]
     protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched
     {
         foreach ($routeData as $data) {

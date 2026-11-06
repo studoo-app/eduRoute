@@ -1,7 +1,8 @@
 includes:
-    # Dette technique connue, à résorber en phase 2 (objets résultat du dispatcher
-    # en "@readonly" PHPDoc → visibilité asymétrique / constructeur). Ne pas y ajouter
-    # de nouvelles entrées : corriger le code à la place.
+    # Dette connue, reportée en phase 3 (version majeure) : les objets résultat du dispatcher
+    # (Matched, MethodNotAllowed) gardent des propriétés "@readonly" PHPDoc assignées par les
+    # dispatchers. Les passer en "readonly class" casse les Dispatcher tiers (new Matched() puis
+    # affectation) et coûte ~20 ns par route trouvée (+20 %). Ne pas ajouter d'autres entrées.
     - phpstan-baseline.neon
 
 parameters:
@@ -15,6 +16,8 @@ parameters:
         - test
 
     reportUnmatchedIgnoredErrors: true
+    # Exige #[\Override] (PHP 8.3) sur toute méthode qui implémente/redéfinit une méthode parente
+    checkMissingOverrideMethodAttribute: true
 
     ignoreErrors:
         # We're marking this as deprecated, there's no point in alerting ourselves here...
