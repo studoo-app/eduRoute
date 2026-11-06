@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Studoo\EduRoute\Test;
 
+use Closure;
 use Nyholm\Psr7\Uri;
 use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
@@ -77,7 +78,7 @@ final class EduRouteTest extends TestCase
         $cache = new class () implements Cache {
             /** @inheritDoc */
             #[Override]
-            public function get(string $key, callable $loader): array
+            public function get(string $key, Closure $loader): array
             {
                 if ($key === 'test') {
                     return [['GET' => ['/' => ['test2', ['test' => true]]]], [], []];
