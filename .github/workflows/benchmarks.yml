@@ -29,7 +29,7 @@ jobs:
           git checkout --quiet "${{ github.event.pull_request.head.sha }}"
           composer install --no-interaction --no-progress
           vendor/bin/phpbench run --retry-threshold=15 --ref=base --progress=plain --php-config='{"error_reporting":"24575"}' \
-            --assert="mode(variant.time.avg) <= mode(baseline.time.avg) +/- 15%" | tee phpbench.log
+            --assert="mode(variant.time.avg) <= mode(baseline.time.avg) +/- 15%" 2>&1 | tee phpbench.log
 
           # phpbench compare les résultats par nom de classe : un sujet sans mesure de référence
           # (classe renommée, namespace changé…) passerait l'assertion sans rien comparer.
