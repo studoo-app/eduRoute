@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Benchmark;
+namespace Studoo\EduRoute\Benchmark;
 
-use FastRoute\ConfigureRoutes;
-use FastRoute\FastRoute;
-use FastRoute\GenerateUri;
 use PhpBench\Attributes as Bench;
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\EduRoute;
+use Studoo\EduRoute\GenerateUri;
 
 /** @phpstan-import-type UriSubstitutions from GenerateUri */
 #[Bench\Iterations(5)]
@@ -35,7 +35,7 @@ final class UriGenerationBench
             $routes->addRoute('GET', '/shop/category/{category_id:\d+}/product/search/{filter_by:[a-zA-Z]+}:{filter_value}', 'do-something', ['_name' => 'shop.category.product.search']);
         };
 
-        $this->generator = FastRoute::recommendedSettings($loader, 'cache')
+        $this->generator = EduRoute::recommendedSettings($loader, 'cache')
             ->disableCache()
             ->uriGenerator();
     }

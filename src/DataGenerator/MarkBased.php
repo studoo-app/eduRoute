@@ -1,15 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\DataGenerator;
+namespace Studoo\EduRoute\DataGenerator;
 
 use Override;
 
 use function implode;
 use function str_increment;
 
-/** @final */
-class MarkBased extends RegexBasedAbstract
+final class MarkBased extends RegexBasedAbstract
 {
     #[Override]
     protected function getApproxChunkSize(): int

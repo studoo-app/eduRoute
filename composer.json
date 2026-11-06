@@ -39,16 +39,13 @@
     },
     "autoload": {
         "psr-4": {
-            "FastRoute\\": "src/"
-        },
-        "files": [
-            "src/functions.php"
-        ]
+            "Studoo\\EduRoute\\": "src/"
+        }
     },
     "autoload-dev": {
         "psr-4": {
-            "FastRoute\\Benchmark\\": "benchmark/",
-            "FastRoute\\Test\\": "test/"
+            "Studoo\\EduRoute\\Benchmark\\": "benchmark/",
+            "Studoo\\EduRoute\\Test\\": "test/"
         }
     },
     "config": {

@@ -1,21 +1,24 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
 use Closure;
-use FastRoute\Cache\FileCache;
+use Studoo\EduRoute\Cache\FileCache;
 
 use function assert;
 use function is_string;
 
 /** @phpstan-import-type ProcessedData from ConfigureRoutes */
-final class FastRoute
+final class EduRoute
 {
     /** @var ProcessedData|null */
     private ?array $processedConfiguration = null;
 
     /**
+     * Les propriétés sont privées et ne sont modifiées que sur un clone fraîchement créé
+     * (voir copy()) : chaque méthode with*()/use*() renvoie une nouvelle instance.
+     *
      * @param Closure(ConfigureRoutes):void  $routeDefinitionCallback
      * @param class-string<RouteParser>      $routeParser
      * @param class-string<DataGenerator>    $dataGenerator
@@ -26,14 +29,14 @@ final class FastRoute
      * @param non-empty-string|null          $cacheKey
      */
     private function __construct(
-        private readonly Closure $routeDefinitionCallback,
-        private readonly string $routeParser,
-        private readonly string $dataGenerator,
-        private readonly string $dispatcher,
-        private readonly string $routesConfiguration,
-        private readonly string $uriGenerator,
-        private readonly Cache|string|null $cacheDriver,
-        private readonly ?string $cacheKey,
+        private Closure $routeDefinitionCallback,
+        private string $routeParser,
+        private string $dataGenerator,
+        private string $dispatcher,
+        private string $routesConfiguration,
+        private string $uriGenerator,
+        private Cache|string|null $cacheDriver,
+        private ?string $cacheKey,
     ) {
     }
 
@@ -44,29 +47,24 @@ final class FastRoute
     public static function recommendedSettings(Closure $routeDefinitionCallback, string $cacheKey): self
     {
         return new self(
-            $routeDefinitionCallback,
-            RouteParser\Std::class,
-            DataGenerator\MarkBased::class,
-            Dispatcher\MarkBased::class,
-            RouteCollector::class,
-            GenerateUri\FromProcessedConfiguration::class,
-            FileCache::class,
-            $cacheKey,
+            routeDefinitionCallback: $routeDefinitionCallback,
+            routeParser: RouteParser\Std::class,
+            dataGenerator: DataGenerator\MarkBased::class,
+            dispatcher: Dispatcher\MarkBased::class,
+            routesConfiguration: RouteCollector::class,
+            uriGenerator: GenerateUri\FromProcessedConfiguration::class,
+            cacheDriver: FileCache::class,
+            cacheKey: $cacheKey,
         );
     }
 
     public function disableCache(): self
     {
-        return new self(
-            $this->routeDefinitionCallback,
-            $this->routeParser,
-            $this->dataGenerator,
-            $this->dispatcher,
-            $this->routesConfiguration,
-            $this->uriGenerator,
-            null,
-            null,
-        );
+        $new = $this->copy();
+        $new->cacheDriver = null;
+        $new->cacheKey = null;
+
+        return $new;
     }
 
     /**
@@ -75,16 +73,11 @@ final class FastRoute
      */
     public function withCache(Cache|string $driver, string $cacheKey): self
     {
-        return new self(
-            $this->routeDefinitionCallback,
-            $this->routeParser,
-            $this->dataGenerator,
-            $this->dispatcher,
-            $this->routesConfiguration,
-            $this->uriGenerator,
-            $driver,
-            $cacheKey,
-        );
+        $new = $this->copy();
+        $new->cacheDriver = $driver;
+        $new->cacheKey = $cacheKey;
+
+        return $new;
     }
 
     public function useCharCountDispatcher(): self
@@ -113,31 +106,32 @@ final class FastRoute
      */
     public function useCustomDispatcher(string $dataGenerator, string $dispatcher): self
     {
-        return new self(
-            $this->routeDefinitionCallback,
-            $this->routeParser,
-            $dataGenerator,
-            $dispatcher,
-            $this->routesConfiguration,
-            $this->uriGenerator,
-            $this->cacheDriver,
-            $this->cacheKey,
-        );
+        $new = $this->copy();
+        $new->dataGenerator = $dataGenerator;
+        $new->dispatcher = $dispatcher;
+
+        return $new;
     }
 
     /** @param class-string<GenerateUri> $uriGenerator */
     public function withUriGenerator(string $uriGenerator): self
     {
-        return new self(
-            $this->routeDefinitionCallback,
-            $this->routeParser,
-            $this->dataGenerator,
-            $this->dispatcher,
-            $this->routesConfiguration,
-            $uriGenerator,
-            $this->cacheDriver,
-            $this->cacheKey,
-        );
+        $new = $this->copy();
+        $new->uriGenerator = $uriGenerator;
+
+        return $new;
+    }
+
+    /**
+     * Clone sans les routes déjà calculées : leur format dépend du générateur de données,
+     * elles ne doivent jamais être réutilisées par une configuration différente.
+     */
+    private function copy(): self
+    {
+        $new = clone $this;
+        $new->processedConfiguration = null;
+
+        return $new;
     }
 
     /** @return ProcessedData */

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test;
+namespace Studoo\EduRoute\Test;
 
-use FastRoute\BadRouteException;
-use FastRoute\ConfigureRoutes;
-use FastRoute\DataGenerator;
-use FastRoute\RouteCollector;
-use FastRoute\RouteParser\Std;
 use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use Studoo\EduRoute\BadRouteException;
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\RouteCollector;
+use Studoo\EduRoute\RouteParser\Std;
 
 use function assert;
 use function count;

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\GenerateUri;
+namespace Studoo\EduRoute\GenerateUri;
 
-use FastRoute\Exception;
 use LogicException;
+use Studoo\EduRoute\Exception;
 
 use function count;
 use function implode;

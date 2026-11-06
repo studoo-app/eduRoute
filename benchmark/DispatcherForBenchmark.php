@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Benchmark;
+namespace Studoo\EduRoute\Benchmark;
 
 use Closure;
-use FastRoute\ConfigureRoutes;
-use FastRoute\DataGenerator;
-use FastRoute\Dispatcher;
-use FastRoute\FastRoute;
 use RuntimeException;
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Dispatcher;
+use Studoo\EduRoute\EduRoute;
 
 /** @phpstan-type DispatcherOptions array{dataGenerator: class-string<DataGenerator>, dispatcher: class-string<Dispatcher>} */
 final class DispatcherForBenchmark
@@ -86,7 +86,7 @@ final class DispatcherForBenchmark
     {
         $options = self::resolveOptions($dispatcher);
 
-        return FastRoute::recommendedSettings($routes, 'unused')
+        return EduRoute::recommendedSettings($routes, 'unused')
             ->disableCache()
             ->useCustomDispatcher($options['dataGenerator'], $options['dispatcher'])
             ->dispatcher();

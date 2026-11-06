@@ -1,15 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
+
+use Closure;
 
 /** @phpstan-import-type ProcessedData from ConfigureRoutes */
 interface Cache
 {
     /**
-     * @param callable():ProcessedData $loader
+     * @param Closure():ProcessedData $loader
      *
      * @return ProcessedData
      */
-    public function get(string $key, callable $loader): array;
+    public function get(string $key, Closure $loader): array;
 }

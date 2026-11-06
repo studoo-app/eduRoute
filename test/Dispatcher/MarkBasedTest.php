@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\Dispatcher;
+namespace Studoo\EduRoute\Test\Dispatcher;
 
-use FastRoute\DataGenerator;
-use FastRoute\Dispatcher;
 use Override;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Dispatcher;
 
 final class MarkBasedTest extends DispatcherTestCase
 {

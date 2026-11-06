@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\Dispatcher;
+namespace Studoo\EduRoute\Test\Dispatcher;
 
-use FastRoute\DataGenerator\GroupCountBased;
-use FastRoute\Dispatcher;
 use Override;
+use Studoo\EduRoute\DataGenerator\GroupCountBased;
+use Studoo\EduRoute\Dispatcher;
 
 final class GroupCountBasedTest extends DispatcherTestCase
 {

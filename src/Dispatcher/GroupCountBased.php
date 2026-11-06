@@ -1,16 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Dispatcher;
+namespace Studoo\EduRoute\Dispatcher;
 
-use FastRoute\Dispatcher\Result\Matched;
 use Override;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
 
 use function count;
 use function preg_match;
 
-/** @final */
-class GroupCountBased extends RegexBasedAbstract
+final class GroupCountBased extends RegexBasedAbstract
 {
     /** @inheritDoc */
     #[Override]
@@ -21,18 +20,18 @@ class GroupCountBased extends RegexBasedAbstract
                 continue;
             }
 
-            [$handler, $varNames, $extraParameters] = $data['routeMap'][count($matches)];
+            $route = $data['routeMap'][count($matches)];
 
             $vars = [];
             $i = 0;
-            foreach ($varNames as $varName) {
+            foreach ($route[1] as $varName) {
                 $vars[$varName] = $matches[++$i];
             }
 
             $result = new Matched();
-            $result->handler = $handler;
+            $result->handler = $route[0];
             $result->variables = $vars;
-            $result->extraParameters = $extraParameters;
+            $result->extraParameters = $route[2];
 
             return $result;
         }

@@ -22,7 +22,7 @@
     cacheDirectory=".phpunit.cache"
 >
     <testsuites>
-        <testsuite name="FastRoute Tests">
+        <testsuite name="EduRoute Tests">
             <directory>./test/</directory>
         </testsuite>
     </testsuites>

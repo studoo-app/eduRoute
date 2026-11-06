@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\DataGenerator;
+namespace Studoo\EduRoute\DataGenerator;
 
 use Override;
 
@@ -10,8 +10,7 @@ use function implode;
 use function max;
 use function str_repeat;
 
-/** @final */
-class GroupCountBased extends RegexBasedAbstract
+final class GroupCountBased extends RegexBasedAbstract
 {
     #[Override]
     protected function getApproxChunkSize(): int

@@ -1,15 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
 use LogicException;
 
 use function sprintf;
 use function var_export;
 
-/** @final */
-class BadRouteException extends LogicException implements Exception
+final class BadRouteException extends LogicException implements Exception
 {
     public static function alreadyRegistered(string $route, string $method): self
     {

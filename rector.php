@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use Rector\CodeQuality\Rector\Identical\SimplifyBoolIdenticalTrueRector;
 use Rector\Config\RectorConfig;
 use Rector\DeadCode\Rector\For_\RemoveDeadLoopRector;
 use Rector\PHPUnit\CodeQuality\Rector\Class_\PreferPHPUnitThisCallRector;
@@ -33,8 +32,4 @@ return RectorConfig::configure()
         PreferPHPUnitThisCallRector::class,
         // Supprime des boucles à corps vide qui ont un effet de bord (cf. ancien GroupPosBased)
         RemoveDeadLoopRector::class,
-    ])
-    ->withSkip([
-        // Parité avec FastRoute d'origine : seul `true` (strict) désactive le cache, pas 1 ou '1'
-        SimplifyBoolIdenticalTrueRector::class => [__DIR__ . '/src/LegacyDispatcherFactory.php'],
     ]);

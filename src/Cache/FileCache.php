@@ -1,19 +1,22 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Cache;
+namespace Studoo\EduRoute\Cache;
 
 use Closure;
-use FastRoute\Cache;
-use FastRoute\ConfigureRoutes;
 use Override;
 use RuntimeException;
+use Studoo\EduRoute\Cache;
+use Studoo\EduRoute\ConfigureRoutes;
 
+use function array_walk_recursive;
 use function chmod;
+use function count;
 use function dirname;
 use function file_put_contents;
 use function is_array;
 use function is_dir;
+use function is_object;
 use function is_writable;
 use function mkdir;
 use function rename;
@@ -43,7 +46,7 @@ final class FileCache implements Cache
 
     /** @inheritdoc */
     #[Override]
-    public function get(string $key, callable $loader): array
+    public function get(string $key, Closure $loader): array
     {
         $result = $this->readFileContents($key);
 
@@ -52,6 +55,7 @@ final class FileCache implements Cache
         }
 
         $data = $loader();
+        $this->guardAgainstObjects($data);
         $this->writeToFile($key, '<?php return ' . var_export($data, true) . ';');
 
         return $data;
@@ -65,12 +69,29 @@ final class FileCache implements Cache
         $value = include $path;
         restore_error_handler();
 
-        if (! is_array($value)) {
+        // Fichier absent ou d'un autre format (ex. cache FastRoute 1.x à 2 entrées) : on régénère
+        if (! is_array($value) || count($value) !== 3) {
             return null;
         }
 
         // @phpstan-ignore-next-line because we won´t be able to validate the array shape in a performant way
         return $value;
+    }
+
+    /**
+     * var_export() écrit un objet (closure, service…) sous la forme Classe::__set_state(), que
+     * PHP ne sait pas relire : la requête suivante finirait en erreur fatale. On refuse donc
+     * d'écrire le cache, avec un message clair, dès la première requête.
+     *
+     * @param array<mixed> $data
+     */
+    private function guardAgainstObjects(array $data): void
+    {
+        array_walk_recursive($data, static function (mixed $value): void {
+            if (is_object($value)) {
+                throw CannotCacheRoutes::becauseOfObject($value);
+            }
+        });
     }
 
     private function writeToFile(string $path, string $content): void

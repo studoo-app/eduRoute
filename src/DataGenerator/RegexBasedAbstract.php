@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\DataGenerator;
+namespace Studoo\EduRoute\DataGenerator;
 
-use FastRoute\BadRouteException;
-use FastRoute\DataGenerator;
-use FastRoute\Route;
-use FastRoute\RouteParser;
 use Override;
+use Studoo\EduRoute\BadRouteException;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Route;
+use Studoo\EduRoute\RouteParser;
 
 use function array_chunk;
 use function array_map;

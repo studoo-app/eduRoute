@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\GenerateUri;
+namespace Studoo\EduRoute\GenerateUri;
 
-use FastRoute\GenerateUri;
-use FastRoute\RouteParser;
 use Override;
+use Studoo\EduRoute\GenerateUri;
+use Studoo\EduRoute\RouteParser;
 
 use function array_key_exists;
 use function array_keys;

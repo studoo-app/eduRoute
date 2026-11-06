@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\RouteParser;
+namespace Studoo\EduRoute\RouteParser;
 
-use FastRoute\BadRouteException;
-use FastRoute\RouteParser;
 use Override;
+use Studoo\EduRoute\BadRouteException;
+use Studoo\EduRoute\RouteParser;
 
 use function assert;
 use function count;
@@ -29,11 +29,10 @@ use const PREG_SET_ORDER;
  * "/user/{name}[/{id:[0-9]+}]"
  *
  * @phpstan-import-type ParsedRoute from RouteParser
- * @final
  */
-class Std implements RouteParser
+final class Std implements RouteParser
 {
-    public const VARIABLE_REGEX = <<<'REGEX'
+    public const string VARIABLE_REGEX = <<<'REGEX'
 \{
     \s* ([a-zA-Z_][a-zA-Z0-9_-]*) \s*
     (?:
@@ -42,7 +41,7 @@ class Std implements RouteParser
 \}
 REGEX;
 
-    public const DEFAULT_DISPATCH_REGEX = '[^/]+';
+    public const string DEFAULT_DISPATCH_REGEX = '[^/]+';
     private const string CAPTURING_GROUPS_REGEX = '~
                 (?:
                     \(\?\(
