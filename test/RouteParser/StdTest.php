@@ -27,7 +27,7 @@ class StdTest extends TestCase
         string $expectedExceptionMessage,
     ): void {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage($expectedExceptionMessage);
+        $this->expectExceptionMessageIsOrContains($expectedExceptionMessage);
 
         $parser = new Std();
         $parser->parse($routeString);

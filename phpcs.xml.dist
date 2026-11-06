@@ -11,6 +11,7 @@
     <file>benchmark</file>
     <file>src</file>
     <file>test</file>
+    <file>rector.php</file>
 
     <rule ref="Lcobucci">
         <exclude name="Generic.Formatting.MultipleStatementAlignment" />
@@ -24,6 +25,13 @@
     <rule ref="SlevomatCodingStandard.Functions.UnusedParameter">
         <exclude-pattern>src/Dispatcher/Result/*</exclude-pattern>
         <exclude-pattern>test/FastRouteTest.php</exclude-pattern>
+    </rule>
+
+    <!-- Typer les constantes publiques est une rupture BC (redéclaration en aval) : reporté en phase 3 -->
+    <rule ref="SlevomatCodingStandard.TypeHints.ClassConstantTypeHint.MissingNativeTypeHint">
+        <exclude-pattern>src/ConfigureRoutes.php</exclude-pattern>
+        <exclude-pattern>src/Dispatcher.php</exclude-pattern>
+        <exclude-pattern>src/RouteParser/Std.php</exclude-pattern>
     </rule>
 
     <rule ref="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming.SuperfluousSuffix">

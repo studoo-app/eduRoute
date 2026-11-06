@@ -1,0 +1,24 @@
+name: "Compatibilité ascendante"
+
+on:
+  pull_request:
+
+jobs:
+  bc-check:
+    name: "Roave BC check"
+    runs-on: "ubuntu-latest"
+    # Informatif : les phases 2 et 3 introduisent volontairement des ruptures.
+    continue-on-error: true
+    steps:
+      - uses: "actions/checkout@v5"
+        with:
+          fetch-depth: 0
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          ini-values: "memory_limit=-1"
+          tools: "composer:v2, roave/backward-compatibility-check"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - run: "roave-backward-compatibility-check --from=${{ github.event.pull_request.base.sha }} --format=github-actions"

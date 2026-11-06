@@ -123,7 +123,7 @@ abstract class DispatcherTestCase extends TestCase
     public function duplicateVariableNameError(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot use the same placeholder "test" twice');
+        $this->expectExceptionMessageIsOrContains('Cannot use the same placeholder "test" twice');
 
         simpleDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/foo/{test}/{test:\d+}', 'handler0');
@@ -134,7 +134,7 @@ abstract class DispatcherTestCase extends TestCase
     public function duplicateVariableRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot register two routes matching "/user/([^/]+)" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Cannot register two routes matching "/user/([^/]+)" for method "GET"');
 
         simpleDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user/{id}', 'handler0'); // oops, forgot \d+ restriction ;)
@@ -146,7 +146,7 @@ abstract class DispatcherTestCase extends TestCase
     public function duplicateStaticRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot register two routes matching "/user" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Cannot register two routes matching "/user" for method "GET"');
 
         simpleDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user', 'handler0');
@@ -158,7 +158,7 @@ abstract class DispatcherTestCase extends TestCase
     public function shadowedStaticRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Static route "/user/nikic" is shadowed by previously defined variable route "/user/([^/]+)" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Static route "/user/nikic" is shadowed by previously defined variable route "/user/([^/]+)" for method "GET"');
 
         simpleDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user/{name}', 'handler0');
@@ -170,7 +170,7 @@ abstract class DispatcherTestCase extends TestCase
     public function capturing(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Regex "(en|de)" for parameter "lang" contains a capturing group');
+        $this->expectExceptionMessageIsOrContains('Regex "(en|de)" for parameter "lang" contains a capturing group');
 
         simpleDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/{lang:(en|de)}', 'handler0');

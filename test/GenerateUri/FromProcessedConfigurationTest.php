@@ -21,7 +21,7 @@ final class FromProcessedConfigurationTest extends TestCase
         $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('There is no route with name "test" defined');
+        $this->expectExceptionMessageIsOrContains('There is no route with name "test" defined');
 
         $generator->forRoute('test');
     }
@@ -32,7 +32,7 @@ final class FromProcessedConfigurationTest extends TestCase
         $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects at least parameter values for [id], but received none');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects at least parameter values for [id], but received none');
 
         $generator->forRoute('post.fetch');
     }
@@ -43,7 +43,7 @@ final class FromProcessedConfigurationTest extends TestCase
         $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects at least parameter values for [id], but received [name,age]');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects at least parameter values for [id], but received [name,age]');
 
         $generator->forRoute('post.fetch', ['name' => 'me', 'age' => '1234']);
     }
@@ -54,7 +54,7 @@ final class FromProcessedConfigurationTest extends TestCase
         $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects the parameter [id] to match the regex `\d+`');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects the parameter [id] to match the regex `\d+`');
 
         $generator->forRoute('post.fetch', ['id' => 'test']);
     }

@@ -1,0 +1,32 @@
+name: "Benchmarks"
+
+on:
+  pull_request:
+
+jobs:
+  phpbench:
+    name: "Comparaison avec la branche cible"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v5"
+        with:
+          fetch-depth: 0
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          ini-values: "memory_limit=-1"
+          tools: "composer:v2"
+
+      - name: "Mesure de référence sur la branche cible"
+        run: |
+          git checkout --quiet "${{ github.event.pull_request.base.sha }}"
+          composer install --no-interaction --no-progress
+          vendor/bin/phpbench run --retry-threshold=15 --tag=base --store --progress=none --php-config='{"error_reporting":"24575"}'
+
+      - name: "Mesure sur la PR et comparaison"
+        run: |
+          git checkout --quiet "${{ github.event.pull_request.head.sha }}"
+          composer install --no-interaction --no-progress
+          vendor/bin/phpbench run --retry-threshold=15 --ref=base --report=aggregate --progress=none --php-config='{"error_reporting":"24575"}' \
+            --assert="mode(variant.time.avg) <= mode(baseline.time.avg) +/- 15%"

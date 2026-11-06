@@ -13,7 +13,7 @@ use function unlink;
 
 final class CachingTest extends TestCase
 {
-    private const CACHE_FILE = __DIR__ . '/routing_cache.php';
+    private const string CACHE_FILE = __DIR__ . '/routing_cache.php';
 
     #[PHPUnit\After]
     public function cleanUpCache(): void

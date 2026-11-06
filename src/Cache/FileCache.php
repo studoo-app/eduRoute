@@ -26,8 +26,8 @@ use const LOCK_EX;
 /** @phpstan-import-type ProcessedData from ConfigureRoutes */
 final class FileCache implements Cache
 {
-    private const DIRECTORY_PERMISSIONS = 0775;
-    private const FILE_PERMISSIONS = 0664;
+    private const int DIRECTORY_PERMISSIONS = 0775;
+    private const int FILE_PERMISSIONS = 0664;
 
     /**
      * This is cached in a local static variable to avoid instantiating a closure each time we need an empty handler

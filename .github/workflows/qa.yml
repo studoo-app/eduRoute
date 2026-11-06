@@ -1,0 +1,92 @@
+name: "Qualité"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "main"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  composer-validate:
+    name: "composer.json"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          tools: "composer:v2"
+      - run: "composer validate --strict"
+
+  phpunit:
+    name: "PHPUnit (PHP ${{ matrix.php-version }}, deps ${{ matrix.dependencies }})"
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "8.4"
+          - "8.5"
+        dependencies:
+          - "lowest"
+          - "locked"
+          - "highest"
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "${{ matrix.php-version }}"
+          coverage: "none"
+          ini-values: "memory_limit=-1"
+          tools: "composer:v2"
+      - uses: "ramsey/composer-install@v3"
+        with:
+          dependency-versions: "${{ matrix.dependencies }}"
+      - run: "vendor/bin/phpunit"
+
+  phpstan:
+    name: "PHPStan"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          tools: "composer:v2"
+      - uses: "ramsey/composer-install@v3"
+      - run: "vendor/bin/phpstan analyse --memory-limit=-1 --error-format=github"
+
+  phpcs:
+    name: "Standard de code"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          tools: "composer:v2, cs2pr"
+      - uses: "ramsey/composer-install@v3"
+      - run: "vendor/bin/phpcs -q --report=checkstyle | cs2pr"
+
+  rector:
+    name: "Rector (modernisation restante)"
+    runs-on: "ubuntu-latest"
+    # Informatif tant que la phase 2 (modernisation PHP 8.4) n'est pas terminée.
+    # À rendre bloquant ensuite en supprimant cette ligne.
+    continue-on-error: true
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          php-version: "8.4"
+          coverage: "none"
+          tools: "composer:v2"
+      - uses: "ramsey/composer-install@v3"
+      - run: "vendor/bin/rector process --dry-run --no-progress-bar"

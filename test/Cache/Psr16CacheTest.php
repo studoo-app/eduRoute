@@ -32,7 +32,7 @@ final class Psr16CacheTest extends TestCase
     /** @param array<string, mixed> $data */
     private function createDummyCache(array &$data): CacheInterface
     {
-        $cache = $this->createMock(CacheInterface::class);
+        $cache = self::createStub(CacheInterface::class);
 
         $cache->method('get')
             ->willReturnCallback(
