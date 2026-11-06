@@ -1,317 +1,317 @@
-FastRoute - Fast request router for PHP
-=======================================
+EduRoute — routeur HTTP rapide pour PHP 8.4+
+=============================================
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/nikic/FastRoute/phpunit.yml?branch=master&style=flat-square)](https://github.com/nikic/FastRoute/actions?query=workflow%3A%22PHPUnit%20Tests%22+branch%3Amaster)
+[![Qualité](https://github.com/studoo-app/eduRoute/actions/workflows/qa.yml/badge.svg)](https://github.com/studoo-app/eduRoute/actions/workflows/qa.yml)
 
-This library provides a fast implementation of a regular expression based router. [Blog post explaining how the
-implementation works and why it is fast.][blog_post]
+`studoo/edu-route` associe une URL et une méthode HTTP à un *handler* (un nom de contrôleur,
+une closure, n'importe quelle donnée). C'est la couche de routage d'[edu-framework](https://github.com/studoo-app/edu-framework).
 
-Install
--------
+Il s'agit d'un fork modernisé de [nikic/FastRoute](https://github.com/nikic/FastRoute), dont il
+reprend l'algorithme à base d'expressions régulières combinées ([explication de son
+fonctionnement][blog_post]), réécrit pour PHP 8.4 : énumérations, objets immuables, attributs
+`#[\Override]`, analyse statique au niveau maximal.
 
-To install with composer:
+Installation
+------------
 
 ```sh
-composer require nikic/fast-route
+composer require studoo/edu-route
 ```
 
-Requires PHP 8.1 or newer.
+PHP 8.4 ou 8.5 requis.
 
-Usage
------
-
-Here's a basic usage example:
+Utilisation rapide
+------------------
 
 ```php
 <?php
 
-require '/path/to/vendor/autoload.php';
+require 'vendor/autoload.php';
 
-$dispatcher = FastRoute\simpleDispatcher(function(FastRoute\ConfigureRoutes $r) {
-    $r->addRoute('GET', '/users', 'get_all_users_handler');
-    // {id} must be a number (\d+)
-    $r->addRoute('GET', '/user/{id:\d+}', 'get_user_handler');
-    // The /{title} suffix is optional
-    $r->addRoute('GET', '/articles/{id:\d+}[/{title}]', 'get_article_handler');
-});
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
+use Studoo\EduRoute\Dispatcher\Result\NotMatched;
+use Studoo\EduRoute\EduRoute;
+use Studoo\EduRoute\HttpMethod;
 
-// Fetch method and URI from somewhere
+$router = EduRoute::recommendedSettings(
+    static function (ConfigureRoutes $r): void {
+        $r->get('/users', 'get_all_users_handler');
+        // {id} doit être un nombre (\d+)
+        $r->get('/user/{id:\d+}', 'get_user_handler');
+        // Le suffixe /{title} est optionnel
+        $r->addRoute(HttpMethod::Get, '/articles/{id:\d+}[/{title}]', 'get_article_handler');
+    },
+    __DIR__ . '/var/cache/routes.php', // fichier de cache (voir « Cache »)
+);
+
+$dispatcher = $router->dispatcher();
+
+// Récupère la méthode et l'URI, sans la query string (?foo=bar), puis décode l'URI
 $httpMethod = $_SERVER['REQUEST_METHOD'];
-$uri = $_SERVER['REQUEST_URI'];
+$uri = rawurldecode(strtok($_SERVER['REQUEST_URI'], '?'));
 
-// Strip query string (?foo=bar) and decode URI
-if (false !== $pos = strpos($uri, '?')) {
-    $uri = substr($uri, 0, $pos);
-}
-$uri = rawurldecode($uri);
+$result = $dispatcher->dispatch($httpMethod, $uri);
 
-$routeInfo = $dispatcher->dispatch($httpMethod, $uri);
-switch ($routeInfo[0]) {
-    case FastRoute\Dispatcher::NOT_FOUND:
-        // ... 404 Not Found
-        break;
-    case FastRoute\Dispatcher::METHOD_NOT_ALLOWED:
-        $allowedMethods = $routeInfo[1];
-        // ... 405 Method Not Allowed
-        break;
-    case FastRoute\Dispatcher::FOUND:
-        $handler = $routeInfo[1];
-        $vars = $routeInfo[2];
-        // ... call $handler with $vars
-        break;
-}
+echo match (true) {
+    $result instanceof Matched => call_user_func($result->handler, $result->variables),
+    $result instanceof MethodNotAllowed => '405 – méthodes autorisées : ' . implode(', ', $result->allowedMethods),
+    $result instanceof NotMatched => '404 – page introuvable',
+};
 ```
 
-### Defining routes
+Définir les routes
+------------------
 
-The routes are defined by calling the `FastRoute\simpleDispatcher()` function, which accepts
-a callable taking a `FastRoute\ConfigureRoutes` instance. The routes are added by calling
-`addRoute()` on the collector instance:
+Les routes sont déclarées dans une closure qui reçoit un `ConfigureRoutes` :
 
 ```php
 $r->addRoute($method, $routePattern, $handler);
 ```
 
-The `$method` is an uppercase HTTP method string for which a certain route should match. It
-is possible to specify multiple valid methods using an array:
+### Méthodes HTTP
+
+`$method` accepte un cas de l'énumération `HttpMethod`, une chaîne en majuscules (y compris une
+méthode non standard comme `'PURGE'`) ou un tableau mélangeant les deux :
 
 ```php
-// These two calls
+$r->addRoute(HttpMethod::Get, '/test', 'handler');
 $r->addRoute('GET', '/test', 'handler');
-$r->addRoute('POST', '/test', 'handler');
-// Are equivalent to this one call
-$r->addRoute(['GET', 'POST'], '/test', 'handler');
+$r->addRoute([HttpMethod::Put, 'PATCH'], '/test', 'handler');
 ```
 
-By default, the `$routePattern` uses a syntax where `{foo}` specifies a placeholder with name `foo`
-and matching the regex `[^/]+`. To adjust the pattern the placeholder matches, you can specify
-a custom pattern by writing `{bar:[0-9]+}`. Some examples:
+Des raccourcis existent : `get()`, `post()`, `put()`, `patch()`, `delete()`, `head()`,
+`options()` et `any()`. Cette dernière déclare une route **de repli** (`HttpMethod::Any`, soit
+`'*'`), utilisée quand aucune route n'existe pour la méthode demandée. Une requête `HEAD` sans
+route dédiée retombe automatiquement sur la route `GET`.
+
+### Motifs d'URL
+
+`{foo}` est un paramètre nommé `foo` qui accepte `[^/]+` (tout sauf `/`). On précise un autre
+motif avec `{nom:regex}` :
 
 ```php
-// Matches /user/42, but not /user/xyz
-$r->addRoute('GET', '/user/{id:\d+}', 'handler');
+// /user/42 → OK, /user/xyz → non
+$r->get('/user/{id:\d+}', 'handler');
 
-// Matches /user/foobar, but not /user/foo/bar
-$r->addRoute('GET', '/user/{name}', 'handler');
+// /user/foobar → OK, /user/foo/bar → non
+$r->get('/user/{name}', 'handler');
 
-// Matches /user/foo/bar as well
-$r->addRoute('GET', '/user/{name:.+}', 'handler');
+// /user/foo/bar → OK
+$r->get('/user/{name:.+}', 'handler');
 ```
 
-Custom patterns for route placeholders cannot use capturing groups. For example `{lang:(en|de)}`
-is not a valid placeholder, because `()` is a capturing group. Instead you can use either
-`{lang:en|de}` or `{lang:(?:en|de)}`.
+Un motif ne peut pas contenir de groupe capturant : `{lang:(en|de)}` est refusé, utilisez
+`{lang:en|de}` ou `{lang:(?:en|de)}`.
 
-Furthermore, parts of the route enclosed in `[...]` are considered optional, so that `/foo[bar]`
-will match both `/foo` and `/foobar`. Optional parts are only supported in a trailing position,
-not in the middle of a route.
+Les parties entre `[...]` sont **optionnelles**, et peuvent s'imbriquer, mais uniquement en fin
+de route :
 
 ```php
-// This route
-$r->addRoute('GET', '/user/{id:\d+}[/{name}]', 'handler');
-// Is equivalent to these two routes
-$r->addRoute('GET', '/user/{id:\d+}', 'handler');
-$r->addRoute('GET', '/user/{id:\d+}/{name}', 'handler');
-
-// Multiple nested optional parts are possible as well
-$r->addRoute('GET', '/user[/{id:\d+}[/{name}]]', 'handler');
-
-// This route is NOT valid, because optional parts can only occur at the end
-$r->addRoute('GET', '/user[/{id:\d+}]/{name}', 'handler');
+// /user/foobar et /user/foobar/42
+$r->get('/user/{name}[/{id:\d+}]', 'handler');
 ```
 
-The `$handler` parameter does not necessarily have to be a callback, it could also be a controller
-class name or any other kind of data you wish to associate with the route. FastRoute only tells you
-which handler corresponds to your URI, how you interpret it is up to you.
+Le *handler* peut être n'importe quelle donnée : un nom de contrôleur
+(`'App\Controller\UserController::show'`), un tableau, une closure… Le routeur indique seulement
+quel *handler* correspond ; c'est à votre application de l'exécuter.
 
-#### Shortcut methods for common request methods
+> Avec un cache (activé par défaut par `recommendedSettings()`), les *handlers* doivent être
+> **exportables** : chaînes, tableaux, scalaires. Une closure ou un objet lève
+> `CannotCacheRoutes` ; ils ne fonctionnent qu'avec `->disableCache()`.
 
-For the `GET`, `POST`, `PUT`, `PATCH`, `DELETE` and `HEAD` request methods shortcut methods are available. For example:
+### Groupes
 
-```php
-$r->get('/get-route', 'get_handler');
-$r->post('/post-route', 'post_handler');
-```
-
-Is equivalent to:
+Toutes les routes d'un groupe partagent un préfixe ; les groupes peuvent s'imbriquer :
 
 ```php
-$r->addRoute('GET', '/get-route', 'get_handler');
-$r->addRoute('POST', '/post-route', 'post_handler');
-```
-
-#### Route Groups
-
-Additionally, you can specify routes inside a group. All routes defined inside a group will have a common prefix.
-
-For example, defining your routes as:
-
-```php
-$r->addGroup('/admin', function (FastRoute\ConfigureRoutes $r) {
-    $r->addRoute('GET', '/do-something', 'handler');
-    $r->addRoute('GET', '/do-another-thing', 'handler');
-    $r->addRoute('GET', '/do-something-else', 'handler');
+$r->addGroup('/admin', static function (ConfigureRoutes $r): void {
+    $r->get('/do-something', 'handler');       // /admin/do-something
+    $r->get('/do-another-thing', 'handler');   // /admin/do-another-thing
 });
 ```
 
-Will have the same result as:
+### Routes nommées et génération d'URL
 
- ```php
-$r->addRoute('GET', '/admin/do-something', 'handler');
-$r->addRoute('GET', '/admin/do-another-thing', 'handler');
-$r->addRoute('GET', '/admin/do-something-else', 'handler');
- ```
-
-Nested groups are also supported, in which case the prefixes of all the nested groups are combined.
-
-### Caching
-
-The reason `simpleDispatcher` accepts a callback for defining the routes is to allow seamless
-caching. By using `cachedDispatcher` instead of `simpleDispatcher` you can cache the generated
-routing data and construct the dispatcher from the cached information:
+Une route nommée (paramètre `ConfigureRoutes::ROUTE_NAME`) permet de construire son URL plutôt
+que de l'écrire en dur dans les vues :
 
 ```php
-<?php
+$r->get('/articles/{year}[/{month}]', 'archive', [ConfigureRoutes::ROUTE_NAME => 'blog.archive']);
 
-$dispatcher = FastRoute\cachedDispatcher(function(FastRoute\ConfigureRoutes $r) {
-    $r->addRoute('GET', '/user/{name}/{id:[0-9]+}', 'handler0');
-    $r->addRoute('GET', '/user/{id:[0-9]+}', 'handler1');
-    $r->addRoute('GET', '/user/{name}', 'handler2');
-}, [
-    'cacheKey' => __DIR__ . '/route.cache', /* required */
-    // 'cacheFile' => __DIR__ . '/route.cache', /* will still work for v1 compatibility */
-    'cacheDisabled' => IS_DEBUG_ENABLED,     /* optional, enabled by default */
-    'cacheDriver' => FastRoute\Cache\FileCache::class, /* optional, class name or instance of the cache driver - defaults to file cache */
-]);
+$uris = $router->uriGenerator();
+
+echo $uris->forRoute('blog.archive', ['year' => '2026']);                   // /articles/2026
+echo $uris->forRoute('blog.archive', ['year' => '2026', 'month' => '11']);  // /articles/2026/11
 ```
 
-The second parameter to the function is an options array, which can be used to specify the cache
-key (e.g. file location when using files for caching), caching driver, among other things.
+Les paramètres en trop deviennent une query string avec `->asUri($psr7Uri)`. Une exception
+`UriCouldNotBeGenerated` signale une route inconnue, un paramètre manquant ou une valeur qui ne
+respecte pas le motif.
 
-### Dispatching a URI
+### Routes par attributs
 
-A URI is dispatched by calling the `dispatch()` method of the created dispatcher. This method
-accepts the HTTP method and a URI. Getting those two bits of information (and normalizing them
-appropriately) is your job - this library is not bound to the PHP web SAPIs.
-
-The `dispatch()` method returns an array whose first element contains a status code. It is one
-of `Dispatcher::NOT_FOUND`, `Dispatcher::METHOD_NOT_ALLOWED` and `Dispatcher::FOUND`. For the
-method not allowed status the second array element contains a list of HTTP methods allowed for
-the supplied URI. For example:
-
-    [FastRoute\Dispatcher::METHOD_NOT_ALLOWED, ['GET', 'POST']]
-
-> **NOTE:** The HTTP specification requires that a `405 Method Not Allowed` response include the
-`Allow:` header to detail available methods for the requested resource. Applications using FastRoute
-should use the second array element to add this header when relaying a 405 response.
-
-For the found status the second array element is the handler that was associated with the route
-and the third array element is a dictionary of placeholder names to their values. For example:
-
-    /* Routing against GET /user/nikic/42 */
-
-    [FastRoute\Dispatcher::FOUND, 'handler0', ['name' => 'nikic', 'id' => '42']]
-
-### Overriding the route parser and dispatcher
-
-The routing process makes use of three components: A route parser, a data generator and a
-dispatcher. The three components adhere to the following interfaces:
+Plutôt que de lister les routes dans une closure, on peut les déclarer directement sur les
+méthodes des contrôleurs avec l'attribut `#[Route]` (répétable), et un préfixe commun avec
+`#[RouteGroup]` :
 
 ```php
-<?php
+use Studoo\EduRoute\Attribute\Route;
+use Studoo\EduRoute\Attribute\RouteGroup;
+use Studoo\EduRoute\HttpMethod;
 
-namespace FastRoute;
+#[RouteGroup('/admin/product', namePrefix: 'admin.product.')]
+final class ProductController
+{
+    #[Route('', name: 'index')]                                   // GET /admin/product
+    public function index(): string { /* ... */ }
 
-interface RouteParser {
-    public function parse($route);
-}
-
-interface DataGenerator {
-    public function addRoute($httpMethod, $routeData, $handler);
-    public function getData();
-}
-
-interface Dispatcher {
-    const NOT_FOUND = 0, FOUND = 1, METHOD_NOT_ALLOWED = 2;
-
-    public function dispatch($httpMethod, $uri);
+    #[Route('/{id:\d+}', methods: [HttpMethod::Put, 'PATCH'], name: 'update')]
+    #[Route('/{id:\d+}/edit', methods: HttpMethod::Post)]
+    public function update(): string { /* ... */ }
 }
 ```
 
-The route parser takes a route pattern string and converts it into an array of route infos, where
-each route info is again an array of its parts. The structure is best understood using an example:
-
-    /* The route /user/{id:\d+}[/{name}] converts to the following array: */
-    [
-        [
-            '/user/',
-            ['id', '\d+'],
-        ],
-        [
-            '/user/',
-            ['id', '\d+'],
-            '/',
-            ['name', '[^/]+'],
-        ],
-    ]
-
-This array can then be passed to the `addRoute()` method of a data generator. After all routes have
-been added the `getData()` of the generator is invoked, which returns all the routing data required
-by the dispatcher. The format of this data is not further specified - it is tightly coupled to
-the corresponding dispatcher.
-
-The dispatcher accepts the routing data via a constructor and provides a `dispatch()` method, which
-you're already familiar with.
-
-The route parser can be overwritten individually (to make use of some different pattern syntax),
-however the data generator and dispatcher should always be changed as a pair, as the output from
-the former is tightly coupled to the input of the latter. The reason the generator and the
-dispatcher are separate is that only the latter is needed when using caching (as the output of
-the former is what is being cached.)
-
-When using the `simpleDispatcher` / `cachedDispatcher` functions from above the override happens
-through the options array:
+Les routes sont enregistrées par `AttributeRouteLoader`, dans l'ordre des contrôleurs puis des
+méthodes :
 
 ```php
-<?php
+use Studoo\EduRoute\Attribute\AttributeRouteLoader;
 
-$dispatcher = FastRoute\simpleDispatcher(function(FastRoute\ConfigureRoutes $r) {
-    /* ... */
-}, [
-    'routeParser' => 'FastRoute\\RouteParser\\Std',
-    'dataGenerator' => 'FastRoute\\DataGenerator\\MarkBased',
-    'dispatcher' => 'FastRoute\\Dispatcher\\MarkBased',
-]);
+$router = EduRoute::recommendedSettings(
+    static function (ConfigureRoutes $r): void {
+        AttributeRouteLoader::register($r, HomeController::class, ProductController::class);
+    },
+    __DIR__ . '/var/cache/routes.php',
+);
 ```
 
-The above options array corresponds to the defaults. By replacing `MarkBased` with
-`GroupCountBased` you could switch to a different dispatching strategy.
+Le *handler* de chaque route est la chaîne `'App\Controller\ProductController::update'` : elle
+reste compatible avec le cache.
 
-### A Note on HEAD Requests
+Règles, vérifiées à l'enregistrement (`BadRouteException` avec le contrôleur et la méthode en cause) :
 
-The HTTP spec requires servers to [support both GET and HEAD methods][2616-511]:
+- un contrôleur est une classe instanciable (ni abstraite, ni interface, ni enum) ;
+- une méthode routée est publique, non statique, non magique (sauf `__invoke`) et déclarée dans
+  le contrôleur lui-même ou dans un de ses traits ; les méthodes héritées d'une classe parente
+  sont refusées (enregistrez une route sur une méthode redéclarée) ;
+- `#[RouteGroup]` ne s'applique qu'à la classe qui le porte : il n'est pas hérité ;
+- ordre d'enregistrement : les méthodes propres du contrôleur dans l'ordre du fichier, puis celles
+  de ses traits.
 
-> The methods GET and HEAD MUST be supported by all general-purpose servers
+Résultat du dispatch
+--------------------
 
-To avoid forcing users to manually register HEAD routes for each resource we fallback to matching an
-available GET route for a given resource. The PHP web SAPI transparently removes the entity body
-from HEAD responses so this behavior has no effect on the vast majority of users.
+`dispatch(HttpMethod|string $method, string $uri)` renvoie l'un de ces trois objets **immuables** :
 
-However, implementers using FastRoute outside the web SAPI environment (e.g. a custom server) MUST
-NOT send entity bodies generated in response to HEAD requests. If you are a non-SAPI user this is
-*your responsibility*; FastRoute has no purview to prevent you from breaking HTTP in such cases.
+| Objet | Signification | Données |
+|---|---|---|
+| `Matched` | une route correspond | `handler`, `variables` (`['id' => '42']`), `extraParameters` |
+| `MethodNotAllowed` | l'URI existe, pas pour cette méthode (réponse 405) | `allowedMethods`, à renvoyer dans l'en-tête `Allow` |
+| `NotMatched` | aucune route (réponse 404) | — |
 
-Finally, note that applications MAY always specify their own HEAD method route for a given
-resource to bypass this behavior entirely.
+> L'accès historique sous forme de tableau (`$result[0]`, `[1]`, `[2]`, comparé aux constantes
+> `Dispatcher::FOUND`…) fonctionne encore mais est **déprécié** : préférez `instanceof`.
 
-### Credits
+Middleware PSR-15
+-----------------
 
-This library is based on a router that [Levi Morrison][levi] implemented for the Aerys server.
+Dans une application PSR-7/PSR-15 (installez `psr/http-server-middleware` et
+`psr/http-factory`), `RoutingMiddleware` fait le routage :
 
-A large number of tests, as well as HTTP compliance considerations, were provided by [Daniel Lowrey][rdlowrey].
+```php
+use Studoo\EduRoute\Http\RoutingMiddleware;
 
+$middleware = new RoutingMiddleware($router->dispatcher(), $psr17ResponseFactory);
+```
 
-[2616-511]: http://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.1 "RFC 2616 Section 5.1.1"
+- route trouvée : la requête reçoit l'attribut `RoutingMiddleware::ROUTE_ATTRIBUTE` (l'objet
+  `Matched`, donc le *handler*) et un attribut par variable (`$request->getAttribute('id')`),
+  puis passe au middleware suivant, qui exécute le contrôleur ;
+- méthode non autorisée : réponse **405** avec l'en-tête `Allow` (qui inclut `HEAD` dès que `GET`
+  est autorisé, `HEAD` étant servi par les routes `GET`) ;
+- aucune route : réponse **404**.
+
+Cache
+-----
+
+Analyser les routes et construire les expressions régulières a un coût. Avec
+`recommendedSettings($routes, $cacheKey)`, le résultat est mis en cache dans le fichier
+`$cacheKey` (`FileCache`, mis en cache par OPcache).
+
+Le cache n'est jamais invalidé automatiquement : **supprimez le fichier quand vos routes changent
+ou quand vous changez de stratégie de dispatch** (le format des données dépend de la stratégie),
+ou utilisez une clé différente par stratégie.
+
+```php
+// Développement : pas de cache
+$router = EduRoute::recommendedSettings($routes, 'unused')->disableCache();
+
+// Autre stockage : tout cache PSR-16 (Redis, APCu…)
+use Studoo\EduRoute\Cache\Psr16Cache;
+
+$router = EduRoute::recommendedSettings($routes, 'routes')
+    ->withCache(new Psr16Cache($psr16Cache), 'routes');
+```
+
+### Chargement paresseux
+
+`lazyDispatcher()` et `lazyUriGenerator()` renvoient des objets paresseux (*lazy objects* de
+PHP 8.4) : les routes ne sont lues dans le cache, ou calculées, qu'au premier appel. Pratique
+quand une partie des requêtes ne route rien (commande CLI, réponse servie par un middleware en
+amont) :
+
+```php
+$dispatcher = $router->lazyDispatcher(); // rien n'est chargé ici
+$result = $dispatcher->dispatch($method, $uri); // les routes sont chargées ici, une seule fois
+```
+
+Une fois initialisé, l'objet est un dispatcher ordinaire, sans surcoût. Seule limite : un
+dispatcher maison qui hérite d'une classe interne de PHP ne peut pas être paresseux ; il est
+alors construit immédiatement.
+
+Choisir la stratégie de dispatch
+--------------------------------
+
+Quatre stratégies sont fournies ; elles donnent le même résultat mais combinent différemment les
+expressions régulières. Les comparer est un bon exercice (`make phpbench`).
+
+| Méthode | Stratégie |
+|---|---|
+| `useMarkDispatcher()` *(par défaut)* | verbe PCRE `(*MARK)` : la plus rapide |
+| `useGroupCountDispatcher()` | nombre de groupes capturants |
+| `useGroupPosDispatcher()` | position du dernier groupe capturant utilisé |
+| `useCharCountDispatcher()` | suffixe de longueur variable |
+
+`useCustomDispatcher()` et `withUriGenerator()` permettent de brancher vos propres
+implémentations des interfaces `DataGenerator`, `Dispatcher` et `GenerateUri`.
+
+Architecture
+------------
+
+Le routage passe par trois composants :
+
+1. **`RouteParser`** (`RouteParser\Std`) transforme `/user/{id:\d+}[/{name}]` en segments
+   statiques et paramètres ;
+2. **`DataGenerator`** regroupe les routes statiques dans une table de hachage et combine les
+   routes variables en quelques grandes expressions régulières ;
+3. **`Dispatcher`** cherche d'abord une route statique, puis teste les expressions régulières.
+
+Contribuer
+----------
+
+```sh
+make ci        # standard de code, PHPStan (niveau max), Rector, PHPUnit
+make phpbench  # benchmarks
+```
+
+Voir [CHANGELOG.md](CHANGELOG.md) et, pour migrer depuis `nikic/fast-route`, [UPGRADE.md](UPGRADE.md).
+
+Crédits et licence
+------------------
+
+Code d'origine © Nikita Popov et les contributeurs de FastRoute ; modernisation © Studoo.
+Distribué sous licence BSD-3-Clause ([LICENSE](LICENSE)).
+
 [blog_post]: http://nikic.github.io/2014/02/18/Fast-request-routing-using-regular-expressions.html
-[levi]: https://github.com/morrisonlevi
-[rdlowrey]: https://github.com/rdlowrey

@@ -1,26 +1,29 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
-use FastRoute\Dispatcher\Result\Matched;
-use FastRoute\Dispatcher\Result\MethodNotAllowed;
-use FastRoute\Dispatcher\Result\NotMatched;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
+use Studoo\EduRoute\Dispatcher\Result\NotMatched;
 
 interface Dispatcher
 {
-    public const NOT_FOUND = 0;
-    public const FOUND = 1;
-    public const METHOD_NOT_ALLOWED = 2;
+    /** @deprecated since 1.0, only meaningful with the deprecated array access: use `instanceof NotMatched` */
+    public const int NOT_FOUND = 0;
+
+    /** @deprecated since 1.0, only meaningful with the deprecated array access: use `instanceof Matched` */
+    public const int FOUND = 1;
+
+    /** @deprecated since 1.0, only meaningful with the deprecated array access: use `instanceof MethodNotAllowed` */
+    public const int METHOD_NOT_ALLOWED = 2;
 
     /**
-     * Dispatches against the provided HTTP method verb and URI.
+     * Cherche la route qui correspond à la méthode HTTP et à l'URI.
      *
-     * Returns an object that also has an array shape with one of the following formats:
-     *
-     *     [self::NOT_FOUND]
-     *     [self::METHOD_NOT_ALLOWED, ['GET', 'OTHER_ALLOWED_METHODS']]
-     *     [self::FOUND, $handler, ['varName' => 'value', ...]]
+     * Renvoie un objet immuable : Matched (handler et variables), MethodNotAllowed (méthodes
+     * autorisées, pour une réponse 405) ou NotMatched (404). L'ancien accès tableau
+     * ([self::FOUND, $handler, $vars]…) fonctionne encore mais est déprécié.
      */
-    public function dispatch(string $httpMethod, string $uri): Matched|NotMatched|MethodNotAllowed;
+    public function dispatch(HttpMethod|string $httpMethod, string $uri): Matched|NotMatched|MethodNotAllowed;
 }

@@ -1,15 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\DataGenerator;
+namespace Studoo\EduRoute\DataGenerator;
 
 use Override;
 
 use function count;
 use function implode;
 
-/** @final */
-class GroupPosBased extends RegexBasedAbstract
+final class GroupPosBased extends RegexBasedAbstract
 {
     #[Override]
     protected function getApproxChunkSize(): int
@@ -26,9 +25,9 @@ class GroupPosBased extends RegexBasedAbstract
         $offset = 1;
         foreach ($regexToRoutesMap as $regex => $route) {
             $regexes[] = $regex;
-            $routeMap[$offset] = [$route->handler, $route->variables, $route->extraParameters];
-
+            // Indexée par la position du DERNIER groupe de la route (voir Dispatcher\GroupPosBased)
             $offset += count($route->variables);
+            $routeMap[$offset - 1] = [$route->handler, $route->variables, $route->extraParameters];
         }
 
         $regex = '~^(?:' . implode('|', $regexes) . ')$~';

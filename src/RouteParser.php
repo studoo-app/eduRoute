@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
 /**
  * @phpstan-type ParsedRoute array<string|array{string, string}>

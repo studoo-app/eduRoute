@@ -1,25 +1,36 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test;
+namespace Studoo\EduRoute\Test;
 
-use FastRoute\Cache;
-use FastRoute\ConfigureRoutes;
-use FastRoute\Dispatcher;
-use FastRoute\FastRoute;
-use FastRoute\GenerateUri;
+use ArrayObject;
+use Closure;
 use Nyholm\Psr7\Uri;
 use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
+use Studoo\EduRoute\Cache;
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Dispatcher;
+use Studoo\EduRoute\EduRoute;
+use Studoo\EduRoute\GenerateUri;
+use Studoo\EduRoute\Test\Dispatcher\InternalParentDispatcher;
 
-final class FastRouteTest extends TestCase
+use function bin2hex;
+use function file_exists;
+use function random_bytes;
+use function sys_get_temp_dir;
+use function unlink;
+
+final class EduRouteTest extends TestCase
 {
     #[PHPUnit\Test]
     public function markShouldBeTheDefaultDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->dispatcher();
 
@@ -29,7 +40,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseCharCountDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useCharCountDispatcher()
             ->dispatcher();
@@ -40,7 +51,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseGroupPosDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useGroupPosDispatcher()
             ->dispatcher();
@@ -51,7 +62,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseGroupCountDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useGroupCountDispatcher()
             ->dispatcher();
@@ -62,7 +73,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function canBeConfiguredToUseMarkDispatcher(): void
     {
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->useCharCountDispatcher()
             ->useMarkDispatcher()
@@ -77,7 +88,7 @@ final class FastRouteTest extends TestCase
         $cache = new class () implements Cache {
             /** @inheritDoc */
             #[Override]
-            public function get(string $key, callable $loader): array
+            public function get(string $key, Closure $loader): array
             {
                 if ($key === 'test') {
                     return [['GET' => ['/' => ['test2', ['test' => true]]]], [], []];
@@ -87,7 +98,7 @@ final class FastRouteTest extends TestCase
             }
         };
 
-        $dispatcher = FastRoute::recommendedSettings($this->routes(...), 'test2')
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'test2')
             ->withCache($cache, 'test')
             ->dispatcher();
 
@@ -106,7 +117,7 @@ final class FastRouteTest extends TestCase
     #[PHPUnit\Test]
     public function defaultUriGeneratorMustBeProvided(): void
     {
-        $uriGenerator = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $uriGenerator = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->uriGenerator();
 
@@ -125,7 +136,7 @@ final class FastRouteTest extends TestCase
             }
         };
 
-        $uriGenerator = FastRoute::recommendedSettings($this->routes(...), 'test')
+        $uriGenerator = EduRoute::recommendedSettings($this->routes(...), 'test')
             ->disableCache()
             ->withUriGenerator($generator::class)
             ->uriGenerator();
@@ -153,7 +164,7 @@ final class FastRouteTest extends TestCase
             );
         };
 
-        $fastRoute = FastRoute::recommendedSettings($loader, 'test')
+        $fastRoute = EduRoute::recommendedSettings($loader, 'test')
             ->disableCache();
 
         $dispatcher   = $fastRoute->dispatcher();
@@ -169,5 +180,92 @@ final class FastRouteTest extends TestCase
         self::assertEquals('/articles/2024/02', $uriGenerator->forRoute('articles.fetch', ['year' => '2024', 'month' => '02']));
         self::assertEquals('/articles/2024/02/15', $uriGenerator->forRoute('articles.fetch', ['year' => '2024', 'month' => '02', 'day' => '15']));
         self::assertSame('/articles/2024/02/15?extra=value', (string) $uriGenerator->forRoute('articles.fetch', ['year' => '2024', 'month' => '02', 'day' => '15', 'extra' => 'value'])->asUri(new Uri()));
+    }
+
+    #[PHPUnit\Test]
+    public function configurationMethodsReturnNewInstancesWithoutSharingProcessedRoutes(): void
+    {
+        $calls = 0;
+        $markBased = EduRoute::recommendedSettings(
+            static function (ConfigureRoutes $r) use (&$calls): void {
+                ++$calls;
+                $r->get('/user/{id:\\d+}', 'user');
+            },
+            'unused',
+        )->disableCache();
+
+        self::assertInstanceOf(Dispatcher\MarkBased::class, $markBased->dispatcher());
+
+        $groupCount = $markBased->useGroupCountDispatcher();
+
+        self::assertNotSame($markBased, $groupCount);
+        self::assertInstanceOf(Dispatcher\MarkBased::class, $markBased->dispatcher(), 'the original is unchanged');
+
+        // Les routes doivent être regénérées pour le nouveau dispatcher (format de données différent)
+        $result = $groupCount->dispatcher()->dispatch('GET', '/user/42');
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $result);
+        self::assertSame(['id' => '42'], $result->variables);
+        self::assertSame(2, $calls);
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherLoadsRoutesOnlyOnFirstUse(): void
+    {
+        $loads = new ArrayObject();
+        $router = EduRoute::recommendedSettings(
+            static function (ConfigureRoutes $r) use ($loads): void {
+                $loads->append(true);
+                $r->get('/user/{id:\\d+}', 'user', [ConfigureRoutes::ROUTE_NAME => 'user']);
+            },
+            'unused',
+        )->disableCache();
+
+        $dispatcher = $router->lazyDispatcher();
+        $uris = $router->lazyUriGenerator();
+
+        self::assertInstanceOf(Dispatcher\MarkBased::class, $dispatcher);
+        self::assertTrue(new ReflectionClass($dispatcher)->isUninitializedLazyObject($dispatcher));
+        self::assertCount(0, $loads, 'routes must not be loaded before the first dispatch');
+
+        $result = $dispatcher->dispatch('GET', '/user/42');
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $result);
+        self::assertSame(['id' => '42'], $result->variables);
+        self::assertCount(1, $loads);
+
+        $dispatcher->dispatch('GET', '/user/43');
+        self::assertSame('/user/7', (string) $uris->forRoute('user', ['id' => '7']));
+        self::assertCount(1, $loads, 'routes are built once and shared by the lazy objects of a router');
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherFallsBackToEagerForClassesExtendingAnInternalClass(): void
+    {
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'unused')
+            ->disableCache()
+            ->useCustomDispatcher(DataGenerator\MarkBased::class, InternalParentDispatcher::class)
+            ->lazyDispatcher();
+
+        self::assertInstanceOf(InternalParentDispatcher::class, $dispatcher);
+        self::assertFalse(new ReflectionClass($dispatcher)->isUninitializedLazyObject($dispatcher));
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $dispatcher->dispatch('GET', '/'));
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherReadsTheFileCacheOnFirstUse(): void
+    {
+        $cacheFile = sys_get_temp_dir() . '/edu-route-lazy-' . bin2hex(random_bytes(4)) . '.php';
+
+        try {
+            $router = EduRoute::recommendedSettings($this->routes(...), $cacheFile);
+            $dispatcher = $router->lazyDispatcher();
+
+            self::assertFileDoesNotExist($cacheFile, 'nothing is built before the first dispatch');
+            self::assertInstanceOf(Dispatcher\Result\Matched::class, $dispatcher->dispatch('GET', '/'));
+            self::assertFileExists($cacheFile);
+        } finally {
+            if (file_exists($cacheFile)) {
+                unlink($cacheFile);
+            }
+        }
     }
 }

@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\Cache;
+namespace Studoo\EduRoute\Test\Cache;
 
-use FastRoute\Cache\Psr16Cache;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\CacheInterface;
+use Studoo\EduRoute\Cache\Psr16Cache;
 
 final class Psr16CacheTest extends TestCase
 {
@@ -51,5 +51,17 @@ final class Psr16CacheTest extends TestCase
             );
 
         return $cache;
+    }
+
+    #[PHPUnit\Test]
+    public function entryFromAnotherFormatIsRegenerated(): void
+    {
+        $data = ['test' => [['GET' => ['/' => 'old-handler']], []]]; // format FastRoute 1.x
+        $generatedData = [['GET' => ['/' => ['test', []]]], [], []];
+
+        $result = new Psr16Cache($this->createDummyCache($data))->get('test', static fn (): array => $generatedData);
+
+        self::assertSame($generatedData, $result);
+        self::assertSame($generatedData, $data['test']);
     }
 }

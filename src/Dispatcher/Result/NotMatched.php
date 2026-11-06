@@ -1,24 +1,27 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Dispatcher\Result;
+namespace Studoo\EduRoute\Dispatcher\Result;
 
 use ArrayAccess;
-use FastRoute\Dispatcher;
+use Deprecated;
 use OutOfBoundsException;
 use Override;
 use RuntimeException;
+use Studoo\EduRoute\Dispatcher;
 
 /** @implements ArrayAccess<int, Dispatcher::NOT_FOUND> */
-final class NotMatched implements ArrayAccess
+final readonly class NotMatched implements ArrayAccess
 {
     #[Override]
+    #[Deprecated('use $result instanceof NotMatched instead', since: '1.0')]
     public function offsetExists(mixed $offset): bool
     {
         return $offset === 0;
     }
 
     #[Override]
+    #[Deprecated('use $result instanceof NotMatched instead', since: '1.0')]
     public function offsetGet(mixed $offset): mixed
     {
         return match ($offset) {

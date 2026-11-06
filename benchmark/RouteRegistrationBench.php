@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Benchmark;
+namespace Studoo\EduRoute\Benchmark;
 
-use FastRoute\Dispatcher;
 use PhpBench\Attributes as Bench;
+use Studoo\EduRoute\Dispatcher;
 
 #[Bench\Iterations(5)]
 #[Bench\Revs(100)]

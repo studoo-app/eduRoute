@@ -1,19 +1,20 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\Dispatcher;
+namespace Studoo\EduRoute\Test\Dispatcher;
 
 use Closure;
-use FastRoute\BadRouteException;
-use FastRoute\ConfigureRoutes;
-use FastRoute\DataGenerator;
-use FastRoute\Dispatcher;
-use FastRoute\Dispatcher\Result\Matched;
-use FastRoute\Dispatcher\Result\MethodNotAllowed;
-use FastRoute\Dispatcher\Result\NotMatched;
-use FastRoute\FastRoute;
+use Error;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use Studoo\EduRoute\BadRouteException;
+use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Dispatcher;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
+use Studoo\EduRoute\Dispatcher\Result\NotMatched;
+use Studoo\EduRoute\EduRoute;
 
 /** @phpstan-import-type ExtraParameters from DataGenerator */
 abstract class DispatcherTestCase extends TestCase
@@ -39,7 +40,7 @@ abstract class DispatcherTestCase extends TestCase
      */
     private function createDispatcher(Closure $callback): Dispatcher
     {
-        return FastRoute::recommendedSettings($callback, 'unused')
+        return EduRoute::recommendedSettings($callback, 'unused')
             ->disableCache()
             ->useCustomDispatcher($this->getDataGeneratorClass(), $this->getDispatcherClass())
             ->dispatcher();
@@ -51,6 +52,7 @@ abstract class DispatcherTestCase extends TestCase
      */
     #[PHPUnit\Test]
     #[PHPUnit\DataProvider('provideFoundDispatchCases')]
+    #[PHPUnit\IgnoreDeprecations('Result\\\\(Matched|MethodNotAllowed|NotMatched)::offset(Get|Exists)\\(\\) is deprecated')]
     public function foundDispatches(
         string $method,
         string $uri,
@@ -67,14 +69,15 @@ abstract class DispatcherTestCase extends TestCase
         self::assertSame($argDict, $info->variables);
         self::assertSame($extraParameters, $info->extraParameters);
 
-        // BC-compatibility checks
-        self::assertSame($dispatcher::FOUND, $info[0]);
+        // Accès tableau historique (déprécié, encore supporté)
+        self::assertSame($dispatcher::FOUND, $info[0]); // @phpstan-ignore classConstant.deprecated (accès historique testé)
         self::assertSame($handler, $info[1]);
         self::assertSame($argDict, $info[2]);
     }
 
     #[PHPUnit\Test]
     #[PHPUnit\DataProvider('provideNotFoundDispatchCases')]
+    #[PHPUnit\IgnoreDeprecations('Result\\\\(Matched|MethodNotAllowed|NotMatched)::offset(Get|Exists)\\(\\) is deprecated')]
     public function notFoundDispatches(string $method, string $uri, Closure $callback): void
     {
         $dispatcher = $this->createDispatcher($callback);
@@ -82,18 +85,19 @@ abstract class DispatcherTestCase extends TestCase
 
         self::assertInstanceOf(NotMatched::class, $routeInfo);
 
-        // BC-compatibility checks
+        // Accès tableau historique (déprécié, encore supporté)
         self::assertArrayNotHasKey(
             1,
             $routeInfo,
             'NOT_FOUND result must only contain a single element in the returned info array',
         );
-        self::assertSame($dispatcher::NOT_FOUND, $routeInfo[0]);
+        self::assertSame($dispatcher::NOT_FOUND, $routeInfo[0]); // @phpstan-ignore classConstant.deprecated (accès historique testé)
     }
 
     /** @param string[] $availableMethods */
     #[PHPUnit\Test]
     #[PHPUnit\DataProvider('provideMethodNotAllowedDispatchCases')]
+    #[PHPUnit\IgnoreDeprecations('Result\\\\(Matched|MethodNotAllowed|NotMatched)::offset(Get|Exists)\\(\\) is deprecated')]
     public function methodNotAllowedDispatches(
         string $method,
         string $uri,
@@ -106,7 +110,7 @@ abstract class DispatcherTestCase extends TestCase
         self::assertInstanceOf(MethodNotAllowed::class, $routeInfo);
         self::assertSame($availableMethods, $routeInfo->allowedMethods);
 
-        // BC-compatibility checks
+        // Accès tableau historique (déprécié, encore supporté)
         self::assertArrayHasKey(
             1,
             $routeInfo,
@@ -114,7 +118,7 @@ abstract class DispatcherTestCase extends TestCase
         );
 
         [$routedStatus, $methodArray] = $dispatcher->dispatch($method, $uri);
-        self::assertSame($dispatcher::METHOD_NOT_ALLOWED, $routedStatus);
+        self::assertSame($dispatcher::METHOD_NOT_ALLOWED, $routedStatus); // @phpstan-ignore classConstant.deprecated (accès historique testé)
         self::assertSame($availableMethods, $methodArray);
     }
 
@@ -316,6 +320,22 @@ abstract class DispatcherTestCase extends TestCase
 
         yield 'fallback method is used as last resource' => ['GET', '/foo', $callback, 'handler0', ['bar' => 'foo'], ['_route' => '/{bar}']];
 
+        // Paramètre pouvant capturer une chaîne vide : la position du groupe ne doit pas être
+        // confondue avec un groupe non utilisé (bug historique de GroupPosBased)
+        $callback = static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/page/{slug:[a-z]*}', 'page');
+            $r->addRoute('GET', '/x/{a}/{b}', 'x');
+        };
+
+        yield 'empty capture in first route of a chunk' => ['GET', '/page/', $callback, 'page', ['slug' => ''], ['_route' => '/page/{slug:[a-z]*}']];
+
+        $callback = static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/x/{a}/{b}', 'x');
+            $r->addRoute('GET', '/page/{slug:[a-z]*}', 'page');
+        };
+
+        yield 'empty capture in later route of a chunk' => ['GET', '/page/', $callback, 'page', ['slug' => ''], ['_route' => '/page/{slug:[a-z]*}']];
+
         $callback = static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user', 'handler0');
             $r->addRoute('*', '/{foo:.*}', 'handler1');
@@ -424,5 +444,59 @@ abstract class DispatcherTestCase extends TestCase
         };
 
         yield 'match static and dynamic routes' => ['PUT', '/user.json', $callback, ['POST', 'GET']];
+    }
+
+    #[PHPUnit\Test]
+    public function resultsAreImmutable(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/static', 'static');
+            $r->addRoute('GET', '/user/{id}', 'dynamic');
+            $r->addRoute('*', '/any', 'any');
+            $r->addRoute('*', '/any/{x}', 'any-dynamic');
+        });
+
+        $cases = [
+            ['GET', '/static'],
+            ['GET', '/user/1'],
+            ['HEAD', '/static'],
+            ['HEAD', '/user/1'],
+            ['DELETE', '/any'],
+            ['DELETE', '/any/1'],
+        ];
+
+        foreach ($cases as [$method, $uri]) {
+            $result = $dispatcher->dispatch($method, $uri);
+            self::assertInstanceOf(Matched::class, $result);
+
+            foreach (['handler' => 'x', 'variables' => [], 'extraParameters' => []] as $property => $value) {
+                try {
+                    $result->{$property} = $value; // @phpstan-ignore-line (3 propriétés testées dynamiquement : on vérifie justement l'immuabilité)
+                    self::fail('Property ' . $property . ' must be readonly');
+                } catch (Error $e) {
+                    self::assertStringContainsString('readonly', $e->getMessage());
+                }
+            }
+        }
+
+        $notAllowed = $dispatcher->dispatch('POST', '/static');
+        self::assertInstanceOf(MethodNotAllowed::class, $notAllowed);
+        $this->expectException(Error::class);
+        $notAllowed->allowedMethods = ['PUT']; // @phpstan-ignore property.readOnlyAssignOutOfClass (on vérifie justement l'immuabilité)
+    }
+
+    #[PHPUnit\Test]
+    #[PHPUnit\IgnoreDeprecations('Result\\\\Matched::offsetGet\\(\\) is deprecated')]
+    public function arrayAccessOnResultsIsDeprecated(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->get('/user/{id}', 'handler');
+        });
+
+        $this->expectUserDeprecationMessage(
+            'Method Studoo\\EduRoute\\Dispatcher\\Result\\Matched::offsetGet() is deprecated since 1.0, use $result instanceof Matched and its properties instead',
+        );
+
+        self::assertSame('handler', $dispatcher->dispatch('GET', '/user/1')[1]);
     }
 }

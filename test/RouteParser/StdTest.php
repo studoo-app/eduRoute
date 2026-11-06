@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\RouteParser;
+namespace Studoo\EduRoute\Test\RouteParser;
 
-use FastRoute\BadRouteException;
-use FastRoute\RouteParser\Std;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use Studoo\EduRoute\BadRouteException;
+use Studoo\EduRoute\RouteParser\Std;
 
 final class StdTest extends TestCase
 {

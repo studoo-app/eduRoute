@@ -1,14 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Dispatcher;
+namespace Studoo\EduRoute\Dispatcher;
 
-use FastRoute\DataGenerator;
-use FastRoute\Dispatcher;
-use FastRoute\Dispatcher\Result\Matched;
-use FastRoute\Dispatcher\Result\MethodNotAllowed;
-use FastRoute\Dispatcher\Result\NotMatched;
 use Override;
+use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\Dispatcher;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
+use Studoo\EduRoute\Dispatcher\Result\NotMatched;
+use Studoo\EduRoute\HttpMethod;
 
 /**
  * @internal
@@ -37,18 +38,25 @@ abstract class RegexBasedAbstract implements Dispatcher
     abstract protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched;
 
     #[Override]
-    public function dispatch(string $httpMethod, string $uri): Matched|NotMatched|MethodNotAllowed
+    public function dispatch(HttpMethod|string $httpMethod, string $uri): Matched|NotMatched|MethodNotAllowed
     {
-        if (isset($this->staticRouteMap[$httpMethod][$uri])) {
+        if ($httpMethod instanceof HttpMethod) {
+            $httpMethod = $httpMethod->value;
+        }
+
+        $route = $this->staticRouteMap[$httpMethod][$uri] ?? null;
+        if ($route !== null) {
             $result = new Matched();
-            $result->handler = $this->staticRouteMap[$httpMethod][$uri][0];
-            $result->extraParameters = $this->staticRouteMap[$httpMethod][$uri][1];
+            $result->handler = $route[0];
+            $result->variables = [];
+            $result->extraParameters = $route[1];
 
             return $result;
         }
 
-        if (isset($this->variableRouteData[$httpMethod])) {
-            $result = $this->dispatchVariableRoute($this->variableRouteData[$httpMethod], $uri);
+        $routeData = $this->variableRouteData[$httpMethod] ?? null;
+        if ($routeData !== null) {
+            $result = $this->dispatchVariableRoute($routeData, $uri);
             if ($result instanceof Matched) {
                 return $result;
             }
@@ -56,16 +64,19 @@ abstract class RegexBasedAbstract implements Dispatcher
 
         // For HEAD requests, attempt fallback to GET
         if ($httpMethod === 'HEAD') {
-            if (isset($this->staticRouteMap['GET'][$uri])) {
+            $route = $this->staticRouteMap['GET'][$uri] ?? null;
+            if ($route !== null) {
                 $result = new Matched();
-                $result->handler = $this->staticRouteMap['GET'][$uri][0];
-                $result->extraParameters = $this->staticRouteMap['GET'][$uri][1];
+                $result->handler = $route[0];
+                $result->variables = [];
+                $result->extraParameters = $route[1];
 
                 return $result;
             }
 
-            if (isset($this->variableRouteData['GET'])) {
-                $result = $this->dispatchVariableRoute($this->variableRouteData['GET'], $uri);
+            $routeData = $this->variableRouteData['GET'] ?? null;
+            if ($routeData !== null) {
+                $result = $this->dispatchVariableRoute($routeData, $uri);
                 if ($result instanceof Matched) {
                     return $result;
                 }
@@ -73,16 +84,19 @@ abstract class RegexBasedAbstract implements Dispatcher
         }
 
         // If nothing else matches, try fallback routes
-        if (isset($this->staticRouteMap['*'][$uri])) {
+        $route = $this->staticRouteMap['*'][$uri] ?? null;
+        if ($route !== null) {
             $result = new Matched();
-            $result->handler = $this->staticRouteMap['*'][$uri][0];
-            $result->extraParameters = $this->staticRouteMap['*'][$uri][1];
+            $result->handler = $route[0];
+            $result->variables = [];
+            $result->extraParameters = $route[1];
 
             return $result;
         }
 
-        if (isset($this->variableRouteData['*'])) {
-            $result = $this->dispatchVariableRoute($this->variableRouteData['*'], $uri);
+        $routeData = $this->variableRouteData['*'] ?? null;
+        if ($routeData !== null) {
+            $result = $this->dispatchVariableRoute($routeData, $uri);
             if ($result instanceof Matched) {
                 return $result;
             }

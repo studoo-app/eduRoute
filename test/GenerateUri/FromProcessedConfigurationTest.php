@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Test\GenerateUri;
+namespace Studoo\EduRoute\Test\GenerateUri;
 
-use FastRoute\GenerateUri;
-use FastRoute\RouteParser;
 use Nyholm\Psr7\Uri;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use Studoo\EduRoute\GenerateUri;
+use Studoo\EduRoute\RouteParser;
 
 use function array_map;
 use function array_reverse;

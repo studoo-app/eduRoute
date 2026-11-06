@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
-use FastRoute\GenerateUri\GeneratedUri;
-use FastRoute\GenerateUri\UriCouldNotBeGenerated;
+use Studoo\EduRoute\GenerateUri\GeneratedUri;
+use Studoo\EduRoute\GenerateUri\UriCouldNotBeGenerated;
 
 /**
  * @phpstan-import-type ParsedRoutes from RouteParser

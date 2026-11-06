@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
+
+use Closure;
 
 /**
  * @phpstan-import-type StaticRoutes from DataGenerator
@@ -12,25 +14,27 @@ namespace FastRoute;
  */
 interface ConfigureRoutes
 {
-    public const ROUTE_NAME = '_name';
-    public const ROUTE_REGEX = '_route';
+    public const string ROUTE_NAME = '_name';
+    public const string ROUTE_REGEX = '_route';
 
     /**
      * Registers a new route.
      *
      * The syntax used in the $route string depends on the used route parser.
      *
-     * @param string|string[] $httpMethod
-     * @param ExtraParameters $extraParameters
+     * @param HttpMethod|string|array<HttpMethod|string> $httpMethod
+     * @param ExtraParameters                            $extraParameters
      */
-    public function addRoute(string|array $httpMethod, string $route, mixed $handler, array $extraParameters = []): void;
+    public function addRoute(HttpMethod|string|array $httpMethod, string $route, mixed $handler, array $extraParameters = []): void;
 
     /**
      * Create a route group with a common prefix.
      *
      * All routes created by the passed callback will have the given group prefix prepended.
+     *
+     * @param Closure(ConfigureRoutes):void $callback
      */
-    public function addGroup(string $prefix, callable $callback): void;
+    public function addGroup(string $prefix, Closure $callback): void;
 
     /**
      * Adds a fallback route to the collection

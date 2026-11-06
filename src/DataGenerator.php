@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
 /**
  * @phpstan-import-type ParsedRoute from RouteParser

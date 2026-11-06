@@ -1,10 +1,3 @@
-includes:
-    # Dette connue, reportée en phase 3 (version majeure) : les objets résultat du dispatcher
-    # (Matched, MethodNotAllowed) gardent des propriétés "@readonly" PHPDoc assignées par les
-    # dispatchers. Les passer en "readonly class" casse les Dispatcher tiers (new Matched() puis
-    # affectation) et coûte ~20 ns par route trouvée (+20 %). Ne pas ajouter d'autres entrées.
-    - phpstan-baseline.neon
-
 parameters:
     level: max
     phpVersion:
@@ -20,5 +13,24 @@ parameters:
     checkMissingOverrideMethodAttribute: true
 
     ignoreErrors:
-        # We're marking this as deprecated, there's no point in alerting ourselves here...
-        - '#Call to deprecated function FastRoute\\(cached|simple)Dispatcher.*#'
+        # Faux positifs : PHPStan 2.3 ne modélise pas `public public(set) readonly` (PHP 8.4).
+        # Les objets résultat sont « write-once » : écrits une seule fois par les dispatchers,
+        # sans constructeur (un appel de constructeur coûte ~10 % par route trouvée).
+        # L'immuabilité réelle est vérifiée par DispatcherTestCase::resultsAreImmutable().
+        -
+            identifier: property.readOnlyAssignOutOfClass
+            message: '#^Readonly property Studoo\\EduRoute\\Dispatcher\\Result\\(Matched|MethodNotAllowed)::\$\w+ is assigned outside of its declaring class\.$#'
+            path: src/Dispatcher/*
+        -
+            identifier: property.uninitializedReadonly
+            path: src/Dispatcher/Result/*
+        # Fixture : méthode routée volontairement privée (rejetée par AttributeRouteLoader)
+        -
+            identifier: method.unused
+            path: test/Attribute/Fixture/PrivateRouteController.php
+        # Fixtures : #[Route] sur une classe, #[RouteGroup] sur une méthode (rejetés par AttributeRouteLoader)
+        -
+            identifier: attribute.target
+            paths:
+                - test/Attribute/Fixture/ClassLevelRouteController.php
+                - test/Attribute/Fixture/RouteGroupOnMethodController.php

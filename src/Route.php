@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute;
+namespace Studoo\EduRoute;
 
 use function is_string;
 use function preg_match;

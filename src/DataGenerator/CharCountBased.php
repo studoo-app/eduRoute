@@ -1,15 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\DataGenerator;
+namespace Studoo\EduRoute\DataGenerator;
 
 use Override;
 
 use function count;
 use function implode;
 
-/** @final */
-class CharCountBased extends RegexBasedAbstract
+final class CharCountBased extends RegexBasedAbstract
 {
     #[Override]
     protected function getApproxChunkSize(): int

@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace FastRoute\Dispatcher;
+namespace Studoo\EduRoute\Dispatcher;
 
-use FastRoute\Dispatcher\Result\Matched;
 use Override;
+use Studoo\EduRoute\Dispatcher\Result\Matched;
 
+use function count;
 use function preg_match;
 
-/** @final */
-class GroupPosBased extends RegexBasedAbstract
+final class GroupPosBased extends RegexBasedAbstract
 {
     /** @inheritDoc */
     #[Override]
@@ -20,23 +20,23 @@ class GroupPosBased extends RegexBasedAbstract
                 continue;
             }
 
-            // Position du premier groupe capturant non vide = index de la route dans le chunk
-            $i = 1;
-            while ($matches[$i] === '') {
-                ++$i;
-            }
-
-            [$handler, $varNames, $extraParameters] = $data['routeMap'][$i];
+            // PCRE omet les groupes non utilisés situés après le dernier groupe utilisé : le dernier
+            // indice de $matches est donc le dernier groupe de la route trouvée (tous ses groupes
+            // participent, même s'ils capturent une chaîne vide comme {slug:[a-z]*} sur « /page/ »).
+            // Les routes du chunk sont indexées par la position de leur dernier groupe.
+            $last = count($matches) - 1;
+            $route = $data['routeMap'][$last];
+            $i = $last - count($route[1]);
 
             $vars = [];
-            foreach ($varNames as $varName) {
-                $vars[$varName] = $matches[$i++];
+            foreach ($route[1] as $varName) {
+                $vars[$varName] = $matches[++$i];
             }
 
             $result = new Matched();
-            $result->handler = $handler;
+            $result->handler = $route[0];
             $result->variables = $vars;
-            $result->extraParameters = $extraParameters;
+            $result->extraParameters = $route[2];
 
             return $result;
         }
