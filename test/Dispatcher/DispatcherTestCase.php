@@ -11,10 +11,9 @@ use FastRoute\Dispatcher;
 use FastRoute\Dispatcher\Result\Matched;
 use FastRoute\Dispatcher\Result\MethodNotAllowed;
 use FastRoute\Dispatcher\Result\NotMatched;
+use FastRoute\FastRoute;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
-
-use function FastRoute\simpleDispatcher;
 
 /** @phpstan-import-type ExtraParameters from DataGenerator */
 abstract class DispatcherTestCase extends TestCase
@@ -34,16 +33,16 @@ abstract class DispatcherTestCase extends TestCase
     abstract protected function getDataGeneratorClass(): string;
 
     /**
-     * Set appropriate options for the specific Dispatcher class we're testing
+     * Construit le dispatcher testé via l'API recommandée (sans cache)
      *
-     * @return array{dataGenerator: class-string<DataGenerator>, dispatcher: class-string<Dispatcher>}
+     * @param Closure(ConfigureRoutes):void $callback
      */
-    private function generateDispatcherOptions(): array
+    private function createDispatcher(Closure $callback): Dispatcher
     {
-        return [
-            'dataGenerator' => $this->getDataGeneratorClass(),
-            'dispatcher' => $this->getDispatcherClass(),
-        ];
+        return FastRoute::recommendedSettings($callback, 'unused')
+            ->disableCache()
+            ->useCustomDispatcher($this->getDataGeneratorClass(), $this->getDispatcherClass())
+            ->dispatcher();
     }
 
     /**
@@ -55,12 +54,12 @@ abstract class DispatcherTestCase extends TestCase
     public function foundDispatches(
         string $method,
         string $uri,
-        callable $callback,
+        Closure $callback,
         string $handler,
         array $argDict = [],
         array $extraParameters = [],
     ): void {
-        $dispatcher = simpleDispatcher($callback, $this->generateDispatcherOptions());
+        $dispatcher = $this->createDispatcher($callback);
         $info = $dispatcher->dispatch($method, $uri);
 
         self::assertInstanceOf(Matched::class, $info);
@@ -76,9 +75,9 @@ abstract class DispatcherTestCase extends TestCase
 
     #[PHPUnit\Test]
     #[PHPUnit\DataProvider('provideNotFoundDispatchCases')]
-    public function notFoundDispatches(string $method, string $uri, callable $callback): void
+    public function notFoundDispatches(string $method, string $uri, Closure $callback): void
     {
-        $dispatcher = simpleDispatcher($callback, $this->generateDispatcherOptions());
+        $dispatcher = $this->createDispatcher($callback);
         $routeInfo = $dispatcher->dispatch($method, $uri);
 
         self::assertInstanceOf(NotMatched::class, $routeInfo);
@@ -98,10 +97,10 @@ abstract class DispatcherTestCase extends TestCase
     public function methodNotAllowedDispatches(
         string $method,
         string $uri,
-        callable $callback,
+        Closure $callback,
         array $availableMethods,
     ): void {
-        $dispatcher = simpleDispatcher($callback, $this->generateDispatcherOptions());
+        $dispatcher = $this->createDispatcher($callback);
         $routeInfo = $dispatcher->dispatch($method, $uri);
 
         self::assertInstanceOf(MethodNotAllowed::class, $routeInfo);
@@ -123,58 +122,58 @@ abstract class DispatcherTestCase extends TestCase
     public function duplicateVariableNameError(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot use the same placeholder "test" twice');
+        $this->expectExceptionMessageIsOrContains('Cannot use the same placeholder "test" twice');
 
-        simpleDispatcher(static function (ConfigureRoutes $r): void {
+        $this->createDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/foo/{test}/{test:\d+}', 'handler0');
-        }, $this->generateDispatcherOptions());
+        });
     }
 
     #[PHPUnit\Test]
     public function duplicateVariableRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot register two routes matching "/user/([^/]+)" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Cannot register two routes matching "/user/([^/]+)" for method "GET"');
 
-        simpleDispatcher(static function (ConfigureRoutes $r): void {
+        $this->createDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user/{id}', 'handler0'); // oops, forgot \d+ restriction ;)
             $r->addRoute('GET', '/user/{name}', 'handler1');
-        }, $this->generateDispatcherOptions());
+        });
     }
 
     #[PHPUnit\Test]
     public function duplicateStaticRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Cannot register two routes matching "/user" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Cannot register two routes matching "/user" for method "GET"');
 
-        simpleDispatcher(static function (ConfigureRoutes $r): void {
+        $this->createDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user', 'handler0');
             $r->addRoute('GET', '/user', 'handler1');
-        }, $this->generateDispatcherOptions());
+        });
     }
 
     #[PHPUnit\Test]
     public function shadowedStaticRoute(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Static route "/user/nikic" is shadowed by previously defined variable route "/user/([^/]+)" for method "GET"');
+        $this->expectExceptionMessageIsOrContains('Static route "/user/nikic" is shadowed by previously defined variable route "/user/([^/]+)" for method "GET"');
 
-        simpleDispatcher(static function (ConfigureRoutes $r): void {
+        $this->createDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/user/{name}', 'handler0');
             $r->addRoute('GET', '/user/nikic', 'handler1');
-        }, $this->generateDispatcherOptions());
+        });
     }
 
     #[PHPUnit\Test]
     public function capturing(): void
     {
         $this->expectException(BadRouteException::class);
-        $this->expectExceptionMessage('Regex "(en|de)" for parameter "lang" contains a capturing group');
+        $this->expectExceptionMessageIsOrContains('Regex "(en|de)" for parameter "lang" contains a capturing group');
 
-        simpleDispatcher(static function (ConfigureRoutes $r): void {
+        $this->createDispatcher(static function (ConfigureRoutes $r): void {
             $r->addRoute('GET', '/{lang:(en|de)}', 'handler0');
-        }, $this->generateDispatcherOptions());
+        });
     }
 
     /** @return iterable<string, array{0: string, 1: string, 2: Closure(ConfigureRoutes):void, 3: string, 4?: array<string, string>}> */

@@ -4,17 +4,19 @@ declare(strict_types=1);
 namespace FastRoute\Cache;
 
 use FastRoute\Cache;
+use Override;
 use Psr\SimpleCache\CacheInterface;
 
 use function is_array;
 
-final class Psr16Cache implements Cache
+final readonly class Psr16Cache implements Cache
 {
-    public function __construct(private readonly CacheInterface $cache)
+    public function __construct(private CacheInterface $cache)
     {
     }
 
     /** @inheritDoc */
+    #[Override]
     public function get(string $key, callable $loader): array
     {
         $result = $this->cache->get($key);

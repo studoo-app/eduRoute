@@ -11,9 +11,14 @@ use PHPUnit\Framework\TestCase;
 use function FastRoute\cachedDispatcher;
 use function unlink;
 
+/**
+ * Couvre l'API historique cachedDispatcher() (dépréciée) et ses options "cacheKey" / "cacheFile".
+ * Les dépréciations attendues sont vérifiées dans LegacyFunctionsTest.
+ */
+#[PHPUnit\IgnoreDeprecations('cachedDispatcher\\(\\) is deprecated')]
 final class CachingTest extends TestCase
 {
-    private const CACHE_FILE = __DIR__ . '/routing_cache.php';
+    private const string CACHE_FILE = __DIR__ . '/routing_cache.php';
 
     #[PHPUnit\After]
     public function cleanUpCache(): void

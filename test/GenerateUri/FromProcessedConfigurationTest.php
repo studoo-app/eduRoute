@@ -18,10 +18,10 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function undefinedRoutesCannotHaveTheirUriGenerated(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('There is no route with name "test" defined');
+        $this->expectExceptionMessageIsOrContains('There is no route with name "test" defined');
 
         $generator->forRoute('test');
     }
@@ -29,10 +29,10 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function itCannotGenerateUriWhenNoneOfTheRequiredParametersAreGiven(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects at least parameter values for [id], but received none');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects at least parameter values for [id], but received none');
 
         $generator->forRoute('post.fetch');
     }
@@ -40,10 +40,10 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function itCannotGenerateUriWhenIrrelevantParametersAreGiven(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects at least parameter values for [id], but received [name,age]');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects at least parameter values for [id], but received [name,age]');
 
         $generator->forRoute('post.fetch', ['name' => 'me', 'age' => '1234']);
     }
@@ -51,10 +51,10 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function argumentValidationMustBeRespected(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id:\d+}']);
 
         $this->expectException(GenerateUri\UriCouldNotBeGenerated::class);
-        $this->expectExceptionMessage('Route "post.fetch" expects the parameter [id] to match the regex `\d+`');
+        $this->expectExceptionMessageIsOrContains('Route "post.fetch" expects the parameter [id] to match the regex `\d+`');
 
         $generator->forRoute('post.fetch', ['id' => 'test']);
     }
@@ -62,7 +62,7 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function routesWithOptionalSegmentsCanBeGenerated(): void
     {
-        $generator = self::routeGeneratorFor(['archive.fetch' => '/archive/{username}[/{year}[/{month}[/{day}]]]']);
+        $generator = $this->routeGeneratorFor(['archive.fetch' => '/archive/{username}[/{year}[/{month}[/{day}]]]']);
 
         self::assertEquals(
             '/archive/test',
@@ -91,7 +91,7 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function staticRoutesCanAlsoBeGenerated(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch-special' => '/post/a-special-post']);
+        $generator = $this->routeGeneratorFor(['post.fetch-special' => '/post/a-special-post']);
 
         self::assertEquals('/post/a-special-post', $generator->forRoute('post.fetch-special'));
     }
@@ -99,7 +99,7 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function resultingUriMustNotHaveUrlEncodedParameters(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id}']);
 
         self::assertEquals(
             '/post/@something-that needs to be encoded 😁',
@@ -110,7 +110,7 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function urlEncodedParametersShouldNotBeManipulated(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id}']);
 
         self::assertEquals(
             '/post/%40something%20that%20needs%20to%20be%20encoded%20%F0%9F%98%81',
@@ -121,7 +121,7 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function nonProcessedParametersAreRetrievable(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id}']);
         $generatedUri = $generator->forRoute('post.fetch', ['id' => 'testing', 'foo' => 'bar', 'baz' => 'foo']);
 
         self::assertSame('/post/testing', $generatedUri->path);
@@ -129,7 +129,7 @@ final class FromProcessedConfigurationTest extends TestCase
         self::assertSame(
             'https://api.my-company.dev:8080/post/testing?foo=bar&baz=foo',
             (string) $generatedUri->asUri(
-                (new Uri())
+                new Uri()
                     ->withScheme('https')
                     ->withHost('api.my-company.dev')
                     ->withPort(8080),
@@ -140,17 +140,15 @@ final class FromProcessedConfigurationTest extends TestCase
     #[PHPUnit\Test]
     public function unicodeParametersAreAlsoAccepted(): void
     {
-        $generator = self::routeGeneratorFor(['post.fetch' => '/post/{id:[\w\-\%]+}']);
+        $generator = $this->routeGeneratorFor(['post.fetch' => '/post/{id:[\w\-\%]+}']);
 
         self::assertEquals('/post/bar-測試', $generator->forRoute('post.fetch', ['id' => 'bar-測試']));
     }
 
     /** @param non-empty-array<non-empty-string, non-empty-string> $routeMap */
-    private static function routeGeneratorFor(array $routeMap): GenerateUri
+    private function routeGeneratorFor(array $routeMap): GenerateUri
     {
-        $parseRoutes = static function (string $route): array {
-            return array_reverse((new RouteParser\Std())->parse($route));
-        };
+        $parseRoutes = static fn (string $route): array => array_reverse(new RouteParser\Std()->parse($route));
 
         return new GenerateUri\FromProcessedConfiguration(array_map($parseRoutes, $routeMap));
     }

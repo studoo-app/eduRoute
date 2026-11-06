@@ -8,6 +8,7 @@ use FastRoute\ConfigureRoutes;
 use FastRoute\DataGenerator;
 use FastRoute\RouteCollector;
 use FastRoute\RouteParser\Std;
+use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +21,7 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function shortcutsCanBeUsedToRegisterRoutes(): void
     {
-        $dataGenerator = self::dummyDataGenerator();
+        $dataGenerator = $this->dummyDataGenerator();
         $r = new RouteCollector(new Std(), $dataGenerator);
 
         $r->any('/any', 'any');
@@ -50,7 +51,7 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function routesCanBeGrouped(): void
     {
-        $dataGenerator = self::dummyDataGenerator();
+        $dataGenerator = $this->dummyDataGenerator();
         $r = new RouteCollector(new Std(), $dataGenerator);
 
         $r->delete('/delete', 'delete');
@@ -121,7 +122,7 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function namedRoutesShouldBeRegistered(): void
     {
-        $dataGenerator = self::dummyDataGenerator();
+        $dataGenerator = $this->dummyDataGenerator();
 
         $r = new RouteCollector(new Std(), $dataGenerator);
         $r->get('/', 'index-handler', ['_name' => 'index']);
@@ -133,7 +134,7 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function cannotDefineRouteWithEmptyName(): void
     {
-        $r = new RouteCollector(new Std(), self::dummyDataGenerator());
+        $r = new RouteCollector(new Std(), $this->dummyDataGenerator());
 
         $this->expectException(BadRouteException::class);
         $r->get('/', 'index-handler', ['_name' => '']);
@@ -142,7 +143,7 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function cannotDefineRouteWithInvalidTypeAsName(): void
     {
-        $r = new RouteCollector(new Std(), self::dummyDataGenerator());
+        $r = new RouteCollector(new Std(), $this->dummyDataGenerator());
 
         $this->expectException(BadRouteException::class);
         $r->get('/', 'index-handler', ['_name' => false]);
@@ -151,14 +152,14 @@ final class RouteCollectorTest extends TestCase
     #[PHPUnit\Test]
     public function cannotDefineDuplicatedRouteName(): void
     {
-        $r = new RouteCollector(new Std(), self::dummyDataGenerator());
+        $r = new RouteCollector(new Std(), $this->dummyDataGenerator());
 
         $this->expectException(BadRouteException::class);
         $r->get('/', 'index-handler', ['_name' => 'index']);
         $r->get('/users/me', 'fetch-user-handler', ['_name' => 'index']);
     }
 
-    private static function dummyDataGenerator(): DataGenerator
+    private function dummyDataGenerator(): DataGenerator
     {
         return new class implements DataGenerator
         {
@@ -166,12 +167,14 @@ final class RouteCollectorTest extends TestCase
             public array $routes = [];
 
             /** @inheritDoc */
+            #[Override]
             public function getData(): array
             {
                 return [[], []];
             }
 
             /** @inheritDoc */
+            #[Override]
             public function addRoute(string $httpMethod, array $routeData, mixed $handler, array $extraParameters = []): void
             {
                 assert(count($routeData) === 1 && is_string($routeData[0]));

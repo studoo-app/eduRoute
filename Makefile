@@ -1,7 +1,10 @@
-PARALLELISM := $(shell nproc)
+PARALLELISM := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 .PHONY: all
-all: install phpcbf phpcs phpstan phpunit phpbench
+all: install phpcbf phpcs phpstan rector phpunit phpbench
+
+.PHONY: ci
+ci: install phpcs phpstan rector phpunit
 
 .PHONY: install
 install: vendor/composer/installed.json
@@ -26,6 +29,22 @@ phpcs:
 phpstan:
 	@vendor/bin/phpstan analyse --memory-limit=-1
 
+# Échoue si Rector propose encore des modernisations (à appliquer avec rector-fix)
+.PHONY: rector
+rector:
+	@vendor/bin/rector process --dry-run
+
+# Applique les modernisations proposées par Rector : relire le diff ensuite !
+.PHONY: rector-fix
+rector-fix:
+	@vendor/bin/rector process
+
+# Xdebug fausse fortement les mesures : on le coupe dans les sous-processus
 .PHONY: phpbench
 phpbench:
-	@vendor/bin/phpbench run -l dots --report aggregate --retry-threshold=15 $(PHPBENCH_OPTIONS)
+	@XDEBUG_MODE=off vendor/bin/phpbench run -l dots --report aggregate --retry-threshold=15 --php-config='{"xdebug.mode":"off"}' $(PHPBENCH_OPTIONS)
+
+# Compare au benchmark de référence stocké localement (tag "baseline_upstream")
+.PHONY: phpbench-compare
+phpbench-compare:
+	@XDEBUG_MODE=off vendor/bin/phpbench run -l dots --report aggregate --retry-threshold=15 --php-config='{"xdebug.mode":"off"}' --ref=baseline_upstream $(PHPBENCH_OPTIONS)

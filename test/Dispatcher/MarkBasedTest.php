@@ -5,14 +5,17 @@ namespace FastRoute\Test\Dispatcher;
 
 use FastRoute\DataGenerator;
 use FastRoute\Dispatcher;
+use Override;
 
-class MarkBasedTest extends DispatcherTestCase
+final class MarkBasedTest extends DispatcherTestCase
 {
+    #[Override]
     protected function getDispatcherClass(): string
     {
         return Dispatcher\MarkBased::class;
     }
 
+    #[Override]
     protected function getDataGeneratorClass(): string
     {
         return DataGenerator\MarkBased::class;

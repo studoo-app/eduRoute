@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 namespace FastRoute\Benchmark;
 
+use Closure;
 use FastRoute\ConfigureRoutes;
 use FastRoute\DataGenerator;
 use FastRoute\Dispatcher;
+use FastRoute\FastRoute;
 use RuntimeException;
-
-use function FastRoute\simpleDispatcher;
 
 /** @phpstan-type DispatcherOptions array{dataGenerator: class-string<DataGenerator>, dispatcher: class-string<Dispatcher>} */
 final class DispatcherForBenchmark
@@ -16,7 +16,7 @@ final class DispatcherForBenchmark
     /** @param class-string<Dispatcher> $dispatcher */
     public static function realLifeExample(string $dispatcher): Dispatcher
     {
-        return simpleDispatcher(
+        return self::build(
             static function (ConfigureRoutes $routes): void {
                 $routes->addRoute('GET', '/', ['name' => 'home']);
                 $routes->addRoute('GET', '/page/{page_slug:[a-zA-Z0-9\-]+}', ['name' => 'page.show']);
@@ -60,22 +60,36 @@ final class DispatcherForBenchmark
                 $routes->addRoute(['PUT', 'PATCH'], '/admin/category/{category_id:\d+}', ['name' => 'admin.category.update']);
                 $routes->addRoute('DELETE', '/admin/category/{category_id:\d+}', ['name' => 'admin.category.destroy']);
             },
-            self::resolveOptions($dispatcher),
+            $dispatcher,
         );
     }
 
     /** @param class-string<Dispatcher> $dispatcher */
     public static function manyRoutes(string $dispatcher, int $routeCount = 400): Dispatcher
     {
-        return simpleDispatcher(
+        return self::build(
             static function (ConfigureRoutes $routes) use ($routeCount): void {
                 for ($i = 0; $i < $routeCount; ++$i) {
                     $routes->addRoute('GET', '/abc' . $i, ['name' => 'static-' . $i]);
                     $routes->addRoute('GET', '/abc{foo}/' . $i, ['name' => 'not-static-' . $i]);
                 }
             },
-            self::resolveOptions($dispatcher),
+            $dispatcher,
         );
+    }
+
+    /**
+     * @param Closure(ConfigureRoutes):void $routes
+     * @param class-string<Dispatcher>      $dispatcher
+     */
+    private static function build(Closure $routes, string $dispatcher): Dispatcher
+    {
+        $options = self::resolveOptions($dispatcher);
+
+        return FastRoute::recommendedSettings($routes, 'unused')
+            ->disableCache()
+            ->useCustomDispatcher($options['dataGenerator'], $options['dispatcher'])
+            ->dispatcher();
     }
 
     /**

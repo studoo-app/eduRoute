@@ -7,6 +7,7 @@ use ArrayAccess;
 use FastRoute\DataGenerator;
 use FastRoute\Dispatcher;
 use OutOfBoundsException;
+use Override;
 use RuntimeException;
 
 /**
@@ -30,11 +31,13 @@ final class Matched implements ArrayAccess
      */
     public array $extraParameters = [];
 
+    #[Override]
     public function offsetExists(mixed $offset): bool
     {
         return $offset >= 0 && $offset <= 2;
     }
 
+    #[Override]
     public function offsetGet(mixed $offset): mixed
     {
         return match ($offset) {
@@ -45,11 +48,13 @@ final class Matched implements ArrayAccess
         };
     }
 
+    #[Override]
     public function offsetSet(mixed $offset, mixed $value): void
     {
         throw new RuntimeException('Result cannot be changed');
     }
 
+    #[Override]
     public function offsetUnset(mixed $offset): void
     {
         throw new RuntimeException('Result cannot be changed');

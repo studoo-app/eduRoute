@@ -12,6 +12,13 @@
     displayDetailsOnTestsThatTriggerNotices="true"
     displayDetailsOnTestsThatTriggerWarnings="true"
     executionOrder="random"
+    failOnDeprecation="true"
+    failOnPhpunitDeprecation="true"
+    failOnPhpunitNotice="true"
+    failOnPhpunitWarning="true"
+    failOnNotice="true"
+    failOnWarning="true"
+    failOnRisky="true"
     cacheDirectory=".phpunit.cache"
 >
     <testsuites>

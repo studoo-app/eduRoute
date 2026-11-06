@@ -1,9 +1,23 @@
+includes:
+    # Dette connue, reportée en phase 3 (version majeure) : les objets résultat du dispatcher
+    # (Matched, MethodNotAllowed) gardent des propriétés "@readonly" PHPDoc assignées par les
+    # dispatchers. Les passer en "readonly class" casse les Dispatcher tiers (new Matched() puis
+    # affectation) et coûte ~20 ns par route trouvée (+20 %). Ne pas ajouter d'autres entrées.
+    - phpstan-baseline.neon
+
 parameters:
     level: max
+    phpVersion:
+        min: 80400
+        max: 80599
     paths:
         - benchmark
         - src
         - test
+
+    reportUnmatchedIgnoredErrors: true
+    # Exige #[\Override] (PHP 8.3) sur toute méthode qui implémente/redéfinit une méthode parente
+    checkMissingOverrideMethodAttribute: true
 
     ignoreErrors:
         # We're marking this as deprecated, there's no point in alerting ourselves here...

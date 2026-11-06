@@ -4,14 +4,15 @@ declare(strict_types=1);
 namespace FastRoute\Dispatcher;
 
 use FastRoute\Dispatcher\Result\Matched;
+use Override;
 
-use function assert;
 use function preg_match;
 
 /** @final */
 class GroupPosBased extends RegexBasedAbstract
 {
     /** @inheritDoc */
+    #[Override]
     protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched
     {
         foreach ($routeData as $data) {
@@ -19,12 +20,11 @@ class GroupPosBased extends RegexBasedAbstract
                 continue;
             }
 
-            // find first non-empty match
-            // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedFor
-            for ($i = 1; $matches[$i] === ''; ++$i) {
+            // Position du premier groupe capturant non vide = index de la route dans le chunk
+            $i = 1;
+            while ($matches[$i] === '') {
+                ++$i;
             }
-
-            assert(isset($i));
 
             [$handler, $varNames, $extraParameters] = $data['routeMap'][$i];
 
