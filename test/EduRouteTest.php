@@ -3,17 +3,27 @@ declare(strict_types=1);
 
 namespace Studoo\EduRoute\Test;
 
+use ArrayObject;
 use Closure;
 use Nyholm\Psr7\Uri;
 use Override;
 use PHPUnit\Framework\Attributes as PHPUnit;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
 use Studoo\EduRoute\Cache;
 use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DataGenerator;
 use Studoo\EduRoute\Dispatcher;
 use Studoo\EduRoute\EduRoute;
 use Studoo\EduRoute\GenerateUri;
+use Studoo\EduRoute\Test\Dispatcher\InternalParentDispatcher;
+
+use function bin2hex;
+use function file_exists;
+use function random_bytes;
+use function sys_get_temp_dir;
+use function unlink;
 
 final class EduRouteTest extends TestCase
 {
@@ -196,5 +206,66 @@ final class EduRouteTest extends TestCase
         self::assertInstanceOf(Dispatcher\Result\Matched::class, $result);
         self::assertSame(['id' => '42'], $result->variables);
         self::assertSame(2, $calls);
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherLoadsRoutesOnlyOnFirstUse(): void
+    {
+        $loads = new ArrayObject();
+        $router = EduRoute::recommendedSettings(
+            static function (ConfigureRoutes $r) use ($loads): void {
+                $loads->append(true);
+                $r->get('/user/{id:\\d+}', 'user', [ConfigureRoutes::ROUTE_NAME => 'user']);
+            },
+            'unused',
+        )->disableCache();
+
+        $dispatcher = $router->lazyDispatcher();
+        $uris = $router->lazyUriGenerator();
+
+        self::assertInstanceOf(Dispatcher\MarkBased::class, $dispatcher);
+        self::assertTrue(new ReflectionClass($dispatcher)->isUninitializedLazyObject($dispatcher));
+        self::assertCount(0, $loads, 'routes must not be loaded before the first dispatch');
+
+        $result = $dispatcher->dispatch('GET', '/user/42');
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $result);
+        self::assertSame(['id' => '42'], $result->variables);
+        self::assertCount(1, $loads);
+
+        $dispatcher->dispatch('GET', '/user/43');
+        self::assertSame('/user/7', (string) $uris->forRoute('user', ['id' => '7']));
+        self::assertCount(1, $loads, 'routes are built once and shared by the lazy objects of a router');
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherFallsBackToEagerForClassesExtendingAnInternalClass(): void
+    {
+        $dispatcher = EduRoute::recommendedSettings($this->routes(...), 'unused')
+            ->disableCache()
+            ->useCustomDispatcher(DataGenerator\MarkBased::class, InternalParentDispatcher::class)
+            ->lazyDispatcher();
+
+        self::assertInstanceOf(InternalParentDispatcher::class, $dispatcher);
+        self::assertFalse(new ReflectionClass($dispatcher)->isUninitializedLazyObject($dispatcher));
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $dispatcher->dispatch('GET', '/'));
+    }
+
+    #[PHPUnit\Test]
+    public function lazyDispatcherReadsTheFileCacheOnFirstUse(): void
+    {
+        $cacheFile = sys_get_temp_dir() . '/edu-route-lazy-' . bin2hex(random_bytes(4)) . '.php';
+
+        try {
+            $router = EduRoute::recommendedSettings($this->routes(...), $cacheFile);
+            $dispatcher = $router->lazyDispatcher();
+
+            self::assertFileDoesNotExist($cacheFile, 'nothing is built before the first dispatch');
+            self::assertInstanceOf(Dispatcher\Result\Matched::class, $dispatcher->dispatch('GET', '/'));
+            self::assertFileExists($cacheFile);
+        } finally {
+            if (file_exists($cacheFile)) {
+                unlink($cacheFile);
+            }
+        }
     }
 }

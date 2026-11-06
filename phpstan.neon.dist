@@ -24,3 +24,13 @@ parameters:
         -
             identifier: property.uninitializedReadonly
             path: src/Dispatcher/Result/*
+        # Fixture : méthode routée volontairement privée (rejetée par AttributeRouteLoader)
+        -
+            identifier: method.unused
+            path: test/Attribute/Fixture/PrivateRouteController.php
+        # Fixtures : #[Route] sur une classe, #[RouteGroup] sur une méthode (rejetés par AttributeRouteLoader)
+        -
+            identifier: attribute.target
+            paths:
+                - test/Attribute/Fixture/ClassLevelRouteController.php
+                - test/Attribute/Fixture/RouteGroupOnMethodController.php

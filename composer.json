@@ -27,7 +27,7 @@
     },
     "require-dev": {
         "lcobucci/coding-standard": "^12.1",
-        "nyholm/psr7": "^1.8",
+        "nyholm/psr7": "^1.8.2",
         "phpbench/phpbench": "^1.7",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.3",
@@ -35,7 +35,13 @@
         "phpstan/phpstan-phpunit": "^2.1",
         "phpstan/phpstan-strict-rules": "^2.1",
         "phpunit/phpunit": "^13.4",
+        "psr/http-factory": "^1.1",
+        "psr/http-server-middleware": "^1.0.2",
         "rector/rector": "^2.8"
+    },
+    "suggest": {
+        "psr/http-server-middleware": "Pour utiliser Studoo\\EduRoute\\Http\\RoutingMiddleware (PSR-15)",
+        "psr/http-factory": "Pour utiliser Studoo\\EduRoute\\Http\\RoutingMiddleware (réponses 404/405 PSR-17)"
     },
     "autoload": {
         "psr-4": {

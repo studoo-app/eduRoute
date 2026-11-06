@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Studoo\EduRoute;
 
 use Closure;
+use ReflectionClass;
 use Studoo\EduRoute\Cache\FileCache;
 
 use function assert;
@@ -173,5 +174,50 @@ final class EduRoute
     public function uriGenerator(): GenerateUri
     {
         return new $this->uriGenerator($this->buildConfiguration()[2]);
+    }
+
+    /**
+     * Comme dispatcher(), mais paresseux (lazy object « ghost », PHP 8.4) : les routes ne sont
+     * lues dans le cache, ou calculées, qu'au premier appel d'une méthode du dispatcher. Ensuite
+     * l'objet est un dispatcher ordinaire, sans surcoût. Utile quand une partie des requêtes ne
+     * route rien (commandes CLI, réponses servies par un middleware en amont…).
+     *
+     * Une classe de dispatcher qui hérite d'une classe interne de PHP ne peut pas être paresseuse
+     * (limite du moteur) : le dispatcher est alors construit immédiatement.
+     */
+    public function lazyDispatcher(): Dispatcher
+    {
+        return $this->lazyGhost($this->dispatcher, fn (): array => $this->buildConfiguration())
+            ?? $this->dispatcher();
+    }
+
+    /** Comme uriGenerator(), mais paresseux : voir lazyDispatcher(). */
+    public function lazyUriGenerator(): GenerateUri
+    {
+        return $this->lazyGhost($this->uriGenerator, fn (): array => $this->buildConfiguration()[2])
+            ?? $this->uriGenerator();
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param class-string<T>         $className
+     * @param Closure(): array<mixed> $constructorArgument
+     *
+     * @return T|null null si la classe ne peut pas être paresseuse
+     */
+    private function lazyGhost(string $className, Closure $constructorArgument): ?object
+    {
+        $class = new ReflectionClass($className);
+
+        for ($parent = $class; $parent !== false; $parent = $parent->getParentClass()) {
+            if ($parent->isInternal()) {
+                return null;
+            }
+        }
+
+        return $class->newLazyGhost(static function (object $object) use ($class, $constructorArgument): void {
+            $class->getConstructor()?->invoke($object, $constructorArgument());
+        });
     }
 }

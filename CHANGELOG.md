@@ -45,6 +45,17 @@ Première version. Par rapport à FastRoute :
   acceptée avec les chaînes par `addRoute()` et `dispatch()` :
   `addRoute([HttpMethod::Put, 'PATCH'], …)`, `dispatch(HttpMethod::Get, $uri)`. Une valeur qui
   n'est ni une chaîne ni un cas de l'énumération lève une `TypeError`.
+- **Routes par attributs** : `#[Route]` (répétable) sur les méthodes de contrôleur et `#[RouteGroup]`
+  (préfixe de chemin et de nom) sur la classe, enregistrées par `AttributeRouteLoader::register()`.
+  Le handler est la chaîne `Classe::méthode`, compatible avec le cache. Les erreurs (contrôleur non
+  instanciable, méthode héritée, statique ou magique, attribut mal placé, nom vide, aucune
+  méthode HTTP, route en double) sont signalées avec le contrôleur et la méthode en cause.
+- **Chargement paresseux** : `EduRoute::lazyDispatcher()` et `lazyUriGenerator()` (*lazy objects*
+  « ghost » PHP 8.4) ne chargent les routes qu'au premier appel, sans surcoût ensuite (un *proxy*
+  coûtait +30 à +76 % par dispatch avec le JIT).
+- **Middleware PSR-15** `Http\RoutingMiddleware` : attributs de requête pour la route et ses
+  variables, réponses 404 et 405 (en-tête `Allow`, `HEAD` inclus avec `GET`). `psr/http-server-middleware` et
+  `psr/http-factory` sont suggérés, pas imposés.
 - `#[\Override]` sur toutes les méthodes redéfinies (imposé par PHPStan).
 - Documentation en français : README, UPGRADE.
 
