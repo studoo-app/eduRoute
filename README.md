@@ -150,6 +150,56 @@ Les paramètres en trop deviennent une query string avec `->asUri($psr7Uri)`. Un
 `UriCouldNotBeGenerated` signale une route inconnue, un paramètre manquant ou une valeur qui ne
 respecte pas le motif.
 
+### Routes par attributs
+
+Plutôt que de lister les routes dans une closure, on peut les déclarer directement sur les
+méthodes des contrôleurs avec l'attribut `#[Route]` (répétable), et un préfixe commun avec
+`#[RouteGroup]` :
+
+```php
+use Studoo\EduRoute\Attribute\Route;
+use Studoo\EduRoute\Attribute\RouteGroup;
+use Studoo\EduRoute\HttpMethod;
+
+#[RouteGroup('/admin/product', namePrefix: 'admin.product.')]
+final class ProductController
+{
+    #[Route('', name: 'index')]                                   // GET /admin/product
+    public function index(): string { /* ... */ }
+
+    #[Route('/{id:\d+}', methods: [HttpMethod::Put, 'PATCH'], name: 'update')]
+    #[Route('/{id:\d+}/edit', methods: HttpMethod::Post)]
+    public function update(): string { /* ... */ }
+}
+```
+
+Les routes sont enregistrées par `AttributeRouteLoader`, dans l'ordre des contrôleurs puis des
+méthodes :
+
+```php
+use Studoo\EduRoute\Attribute\AttributeRouteLoader;
+
+$router = EduRoute::recommendedSettings(
+    static function (ConfigureRoutes $r): void {
+        AttributeRouteLoader::register($r, HomeController::class, ProductController::class);
+    },
+    __DIR__ . '/var/cache/routes.php',
+);
+```
+
+Le *handler* de chaque route est la chaîne `'App\Controller\ProductController::update'` : elle
+reste compatible avec le cache.
+
+Règles, vérifiées à l'enregistrement (`BadRouteException` avec le contrôleur et la méthode en cause) :
+
+- un contrôleur est une classe instanciable (ni abstraite, ni interface, ni enum) ;
+- une méthode routée est publique, non statique, non magique (sauf `__invoke`) et déclarée dans
+  le contrôleur lui-même ou dans un de ses traits ; les méthodes héritées d'une classe parente
+  sont refusées (enregistrez une route sur une méthode redéclarée) ;
+- `#[RouteGroup]` ne s'applique qu'à la classe qui le porte : il n'est pas hérité ;
+- ordre d'enregistrement : les méthodes propres du contrôleur dans l'ordre du fichier, puis celles
+  de ses traits.
+
 Résultat du dispatch
 --------------------
 
@@ -163,6 +213,25 @@ Résultat du dispatch
 
 > L'accès historique sous forme de tableau (`$result[0]`, `[1]`, `[2]`, comparé aux constantes
 > `Dispatcher::FOUND`…) fonctionne encore mais est **déprécié** : préférez `instanceof`.
+
+Middleware PSR-15
+-----------------
+
+Dans une application PSR-7/PSR-15 (installez `psr/http-server-middleware` et
+`psr/http-factory`), `RoutingMiddleware` fait le routage :
+
+```php
+use Studoo\EduRoute\Http\RoutingMiddleware;
+
+$middleware = new RoutingMiddleware($router->dispatcher(), $psr17ResponseFactory);
+```
+
+- route trouvée : la requête reçoit l'attribut `RoutingMiddleware::ROUTE_ATTRIBUTE` (l'objet
+  `Matched`, donc le *handler*) et un attribut par variable (`$request->getAttribute('id')`),
+  puis passe au middleware suivant, qui exécute le contrôleur ;
+- méthode non autorisée : réponse **405** avec l'en-tête `Allow` (qui inclut `HEAD` dès que `GET`
+  est autorisé, `HEAD` étant servi par les routes `GET`) ;
+- aucune route : réponse **404**.
 
 Cache
 -----
@@ -185,6 +254,22 @@ use Studoo\EduRoute\Cache\Psr16Cache;
 $router = EduRoute::recommendedSettings($routes, 'routes')
     ->withCache(new Psr16Cache($psr16Cache), 'routes');
 ```
+
+### Chargement paresseux
+
+`lazyDispatcher()` et `lazyUriGenerator()` renvoient des objets paresseux (*lazy objects* de
+PHP 8.4) : les routes ne sont lues dans le cache, ou calculées, qu'au premier appel. Pratique
+quand une partie des requêtes ne route rien (commande CLI, réponse servie par un middleware en
+amont) :
+
+```php
+$dispatcher = $router->lazyDispatcher(); // rien n'est chargé ici
+$result = $dispatcher->dispatch($method, $uri); // les routes sont chargées ici, une seule fois
+```
+
+Une fois initialisé, l'objet est un dispatcher ordinaire, sans surcoût. Seule limite : un
+dispatcher maison qui hérite d'une classe interne de PHP ne peut pas être paresseux ; il est
+alors construit immédiatement.
 
 Choisir la stratégie de dispatch
 --------------------------------

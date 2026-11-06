@@ -32,4 +32,6 @@ return RectorConfig::configure()
         PreferPHPUnitThisCallRector::class,
         // Supprime des boucles à corps vide qui ont un effet de bord (cf. ancien GroupPosBased)
         RemoveDeadLoopRector::class,
+        // Fixtures de test : méthodes volontairement invalides (privée, statique…)
+        __DIR__ . '/test/Attribute/Fixture',
     ]);
