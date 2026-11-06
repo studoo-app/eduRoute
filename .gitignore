@@ -1,0 +1,16 @@
+.claude/**
+.vide/**
+.opencode/**
+.agents/**
+.env
+.DS_Store
+
+# PHP / outillage
+/vendor/
+.idea/
+phpcs.xml
+phpstan.neon
+phpunit.xml
+/*.cache
+/.phpbench
+/.phpunit.cache

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<ruleset
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd"
+>
+    <arg name="basepath" value="."/>
+    <arg name="extensions" value="php"/>
+    <arg name="colors" />
+    <arg value="nps" />
+
+    <file>benchmark</file>
+    <file>src</file>
+    <file>test</file>
+
+    <rule ref="Lcobucci">
+        <exclude name="Generic.Formatting.MultipleStatementAlignment" />
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Classes.SuperfluousAbstractClassNaming.SuperfluousSuffix">
+        <exclude-pattern>src/Dispatcher/RegexBasedAbstract*</exclude-pattern>
+        <exclude-pattern>src/DataGenerator/RegexBasedAbstract*</exclude-pattern>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Functions.UnusedParameter">
+        <exclude-pattern>src/Dispatcher/Result/*</exclude-pattern>
+        <exclude-pattern>test/FastRouteTest.php</exclude-pattern>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming.SuperfluousSuffix">
+        <exclude-pattern>src/BadRouteException*</exclude-pattern>
+    </rule>
+</ruleset>
