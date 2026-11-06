@@ -7,8 +7,7 @@ jobs:
   bc-check:
     name: "Roave BC check"
     runs-on: "ubuntu-latest"
-    # Informatif : les phases 2 et 3 introduisent volontairement des ruptures.
-    continue-on-error: true
+    # Bloquant depuis la 1.0.0 : toute rupture de compatibilité doit attendre une version majeure.
     steps:
       - uses: "actions/checkout@v5"
         with:
@@ -21,4 +20,6 @@ jobs:
           tools: "composer:v2, roave/backward-compatibility-check"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      - run: "roave-backward-compatibility-check --from=${{ github.event.pull_request.base.sha }} --format=github-actions"
+      # --install-development-dependencies : les interfaces PSR seulement suggérées (psr/http-server-middleware,
+      # psr/http-factory) sont en require-dev ; sans elles, RoutingMiddleware ne peut pas être analysé.
+      - run: "roave-backward-compatibility-check --from=${{ github.event.pull_request.base.sha }} --install-development-dependencies --format=github-actions"
