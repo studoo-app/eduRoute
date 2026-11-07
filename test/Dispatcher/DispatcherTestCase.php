@@ -19,7 +19,11 @@ use Studoo\EduRoute\RegexMatchingFailed;
 
 use function ini_get;
 use function ini_set;
+use function restore_error_handler;
+use function set_error_handler;
 use function str_repeat;
+
+use const E_WARNING;
 
 /** @phpstan-import-type ExtraParameters from DataGenerator */
 abstract class DispatcherTestCase extends TestCase
@@ -214,23 +218,59 @@ abstract class DispatcherTestCase extends TestCase
     }
 
     /**
-     * Exécute $callback avec une limite de retour arrière PCRE réduite (et le JIT désactivé,
-     * pour que la limite s'applique quelle que soit la configuration de PHP).
+     * Un motif de paramètre invalide (qui ne compile pas) casse tout le chunk : l'exception le dit,
+     * au lieu de conseiller d'augmenter les limites de PCRE.
+     */
+    #[PHPUnit\Test]
+    public function invalidParameterRegexIsReportedAsSuch(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:a)}', 'invalid');
+            $r->addRoute('GET', '/u/{id}', 'user');
+        });
+
+        try {
+            $this->withoutWarnings(static fn (): Matched|NotMatched|MethodNotAllowed => $dispatcher->dispatch('GET', '/u/1'));
+            self::fail('RegexMatchingFailed was expected');
+        } catch (RegexMatchingFailed $e) {
+            self::assertStringContainsString('(Internal error)', $e->getMessage());
+            self::assertStringContainsString('est sans doute invalide', $e->getMessage());
+            self::assertStringNotContainsString('backtrack_limit', $e->getMessage());
+        }
+    }
+
+    /**
+     * Exécute $callback avec une limite de retour arrière PCRE réduite. Le JIT de PCRE2 applique
+     * aussi cette limite : pas besoin de le désactiver (ce qui, de toute façon, ne vaudrait que pour
+     * les motifs compilés ensuite, PHP gardant les motifs compilés en cache).
      *
      * @param Closure():mixed $callback
      */
     private function withBacktrackLimit(int $limit, Closure $callback): void
     {
         $backtrackLimit = ini_get('pcre.backtrack_limit');
-        $jit = ini_get('pcre.jit');
         ini_set('pcre.backtrack_limit', (string) $limit);
-        ini_set('pcre.jit', '0');
 
         try {
             $callback();
         } finally {
             ini_set('pcre.backtrack_limit', (string) $backtrackLimit);
-            ini_set('pcre.jit', (string) $jit);
+        }
+    }
+
+    /**
+     * Exécute $callback en ignorant les avertissements PHP (preg_match() en émet un quand le motif ne compile pas).
+     *
+     * @param Closure():mixed $callback
+     */
+    private function withoutWarnings(Closure $callback): void
+    {
+        set_error_handler(static fn (): bool => true, E_WARNING);
+
+        try {
+            $callback();
+        } finally {
+            restore_error_handler();
         }
     }
 

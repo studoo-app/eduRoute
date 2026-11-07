@@ -16,7 +16,8 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
   `{p:(?:a?a?)*}`), l'échec passait pour une absence de route : une URL valide recevait un 404
   sans explication. Les quatre dispatchers lèvent désormais `RegexMatchingFailed`, avec l'URI
   et l'erreur PCRE. La vérification des routes statiques masquées par une route variable
-  signale aussi l'échec au lieu de conclure qu'il n'y a pas de masquage. Bug hérité de
+  signale aussi l'échec au lieu de conclure qu'il n'y a pas de masquage. Un motif de paramètre
+  qui ne compile pas (par exemple `{p:a)}`) est signalé comme invalide. Bug hérité de
   FastRoute ([nikic/FastRoute#167](https://github.com/nikic/FastRoute/issues/167)).
 
 ## [1.0.0] — 2026-11-06
