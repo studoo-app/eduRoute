@@ -166,6 +166,26 @@ final class EduRoute
         return $this->processedConfiguration = $cache->get($this->cacheKey, $loader);
     }
 
+    /**
+     * Routes déclarées par la fonction de définition, pour les lister (commande routes:list…) :
+     * voir RouteCollector::declaredRoutes().
+     *
+     * La fonction de définition est rejouée à chaque appel, sur un collecteur neuf. Le cache n'est
+     * ni lu ni écrit : la liste reflète le code actuel, et les handlers non exportables (closures)
+     * sont acceptés. Destinée aux outils, pas au traitement des requêtes.
+     *
+     * @return list<DeclaredRoute>
+     */
+    public function declaredRoutes(): array
+    {
+        // $routesConfiguration vaut toujours RouteCollector::class (seul recommendedSettings() le
+        // renseigne) ; le générateur configuré lève les mêmes erreurs (doublons…) qu'au dispatch.
+        $collector = new RouteCollector(new $this->routeParser(), new $this->dataGenerator());
+        ($this->routeDefinitionCallback)($collector);
+
+        return $collector->declaredRoutes();
+    }
+
     public function dispatcher(): Dispatcher
     {
         return new $this->dispatcher($this->buildConfiguration());

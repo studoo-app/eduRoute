@@ -150,6 +150,44 @@ Les paramètres en trop deviennent une query string avec `->asUri($psr7Uri)`. Un
 `UriCouldNotBeGenerated` signale une route inconnue, un paramètre manquant ou une valeur qui ne
 respecte pas le motif.
 
+### Lister les routes (`routes:list`)
+
+`declaredRoutes()` renvoie les routes déclarées, dans l'ordre de déclaration, sous forme d'objets
+`DeclaredRoute` : méthode HTTP, motif d'origine (préfixe de groupe inclus), handler, nom et
+paramètres supplémentaires. De quoi écrire une commande `routes:list` :
+
+```php
+foreach ($router->declaredRoutes() as $route) {
+    printf(
+        "%-8s %-35s %-40s %s\n",
+        $route->isFallback() ? 'ANY' : $route->method,
+        $route->pattern,
+        $route->describeHandler(),   // texte affichable, même pour une closure ou un tableau
+        $route->name ?? '-',
+    );
+}
+```
+
+```text
+GET      /                                   Controller\HomeController                home
+GET      /articles/{year}[/{month}]          archive                                  blog.archive
+POST     /contact                            Controller\ContactController::send       -
+```
+
+Avec un `RouteCollector` construit à la main (comme le fait edu-framework), la même liste est
+donnée par `$collector->declaredRoutes()`.
+
+À savoir :
+
+- une ligne **par méthode** : `addRoute(['GET', 'POST'], …)` donne deux lignes ;
+- `'*'` désigne une route de repli (`any()`) ; la réponse implicite à HEAD des routes GET n'est
+  pas listée ;
+- les segments optionnels sont affichés tels que déclarés (`[/{month}]`) ;
+- pour trier : `usort($routes, fn ($a, $b) => strcmp($a->pattern, $b->pattern))` ;
+- `$router->declaredRoutes()` rejoue la fonction de définition des routes à chaque appel, sans lire
+  ni écrire le cache : la liste reflète le code actuel. C'est un outil de développement, pas
+  une méthode à appeler à chaque requête.
+
 ### Routes par attributs
 
 Plutôt que de lister les routes dans une closure, on peut les déclarer directement sur les

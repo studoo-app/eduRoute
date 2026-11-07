@@ -23,6 +23,9 @@ final class RouteCollector implements ConfigureRoutes
     /** @var RoutesForUriGeneration */
     private array $namedRoutes = [];
 
+    /** @var list<array{list<string>, string, mixed, non-empty-string|null, ExtraParameters}> */
+    private array $declarations = [];
+
     public function __construct(
         private readonly RouteParser $routeParser,
         private readonly DataGenerator $dataGenerator,
@@ -35,22 +38,30 @@ final class RouteCollector implements ConfigureRoutes
     {
         $route = $this->currentGroupPrefix . $route;
         $parsedRoutes = $this->routeParser->parse($route);
+        $methods = HttpMethod::normalize($httpMethod);
+
+        // Le nom est validé avant d'ajouter la route : un nom refusé ne laisse pas de route dispatchable
+        $name = array_key_exists(self::ROUTE_NAME, $extraParameters)
+            ? $this->validateRouteName($extraParameters[self::ROUTE_NAME])
+            : null;
 
         $extraParameters = [self::ROUTE_REGEX => $route] + $extraParameters;
 
-        foreach (HttpMethod::normalize($httpMethod) as $method) {
+        foreach ($methods as $method) {
             foreach ($parsedRoutes as $parsedRoute) {
                 $this->dataGenerator->addRoute($method, $parsedRoute, $handler, $extraParameters);
             }
         }
 
-        if (array_key_exists(self::ROUTE_NAME, $extraParameters)) {
-            $this->registerNamedRoute($extraParameters[self::ROUTE_NAME], $parsedRoutes);
+        if ($name !== null) {
+            $this->namedRoutes[$name] = array_reverse($parsedRoutes);
         }
+
+        $this->declarations[] = [$methods, $route, $handler, $name, $extraParameters];
     }
 
-    /** @param ParsedRoutes $parsedRoutes */
-    private function registerNamedRoute(mixed $name, array $parsedRoutes): void
+    /** @return non-empty-string */
+    private function validateRouteName(mixed $name): string
     {
         if (! is_string($name) || $name === '') {
             throw BadRouteException::invalidRouteName($name);
@@ -60,7 +71,7 @@ final class RouteCollector implements ConfigureRoutes
             throw BadRouteException::namedRouteAlreadyDefined($name);
         }
 
-        $this->namedRoutes[$name] = array_reverse($parsedRoutes);
+        return $name;
     }
 
     #[Override]
@@ -126,6 +137,31 @@ final class RouteCollector implements ConfigureRoutes
     public function options(string $route, mixed $handler, array $extraParameters = []): void
     {
         $this->addRoute(HttpMethod::Options, $route, $handler, $extraParameters);
+    }
+
+    /**
+     * Routes déclarées avec succès, dans l'ordre de déclaration, pour les lister (commande
+     * routes:list…). Une entrée par méthode HTTP : addRoute(['GET', 'POST'], …) donne deux
+     * entrées consécutives. Les segments optionnels ne sont pas éclatés.
+     *
+     * Après une BadRouteException, recréez le collecteur : une route déclarée pour plusieurs
+     * méthodes peut avoir été enregistrée en partie.
+     *
+     * @return list<DeclaredRoute>
+     */
+    public function declaredRoutes(): array
+    {
+        $routes = [];
+
+        foreach ($this->declarations as [$methods, $pattern, $handler, $name, $extraParameters]) {
+            unset($extraParameters[self::ROUTE_REGEX], $extraParameters[self::ROUTE_NAME]);
+
+            foreach ($methods as $method) {
+                $routes[] = new DeclaredRoute($method, $pattern, $handler, $name, $extraParameters);
+            }
+        }
+
+        return $routes;
     }
 
     /** @inheritDoc */
