@@ -77,7 +77,7 @@ Documentation
 | [Errors and exceptions](docs/en/errors.md) | [Erreurs et exceptions](docs/fr/errors.md) |
 | [Migration](docs/en/migration.md) | [Migration](docs/fr/migration.md) |
 
-Changes are listed in [CHANGELOG.md](CHANGELOG.md) (in French).
+Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 Contributing
 ------------

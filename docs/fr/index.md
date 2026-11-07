@@ -138,7 +138,7 @@ make ci        # standard de code, PHPStan (niveau max), Rector, PHPUnit
 make phpbench  # benchmarks des stratégies de dispatch
 ```
 
-L'historique des versions est dans [CHANGELOG.md](../../CHANGELOG.md).
+L'historique des versions est dans [CHANGELOG.md](../../CHANGELOG.md) (en anglais).
 
 ## Crédits et licence
 

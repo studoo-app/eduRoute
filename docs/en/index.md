@@ -138,7 +138,7 @@ make ci        # coding standard, PHPStan (max level), Rector, PHPUnit
 make phpbench  # benchmarks of the dispatch strategies
 ```
 
-The release history is in [CHANGELOG.md](../../CHANGELOG.md) (in French).
+The release history is in [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Credits and license
 
