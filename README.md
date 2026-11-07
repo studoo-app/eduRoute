@@ -169,9 +169,9 @@ foreach ($router->declaredRoutes() as $route) {
 ```
 
 ```text
-GET      /                                   Controller\HomeController                 home
+GET      /                                   Controller\HomeController                home
 GET      /articles/{year}[/{month}]          archive                                  blog.archive
-POST     /contact                            Controller\ContactController::send        -
+POST     /contact                            Controller\ContactController::send       -
 ```
 
 Avec un `RouteCollector` construit à la main (comme le fait edu-framework), la même liste est

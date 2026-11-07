@@ -23,9 +23,10 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
 ### Corrigé
 
 - Un nom de route invalide ou déjà utilisé est refusé **avant** l'enregistrement de la route :
-  si l'exception était attrapée, la route restait dispatchable. Quand la route et son nom sont
-  tous deux en double, l'exception levée est désormais celle du nom
-  (`Cannot register two routes under the name …`).
+  si l'exception était attrapée, la route restait dispatchable. En conséquence, une erreur sur
+  le nom (vide, pas une chaîne, déjà utilisé) est désormais signalée avant les erreurs
+  d'enregistrement de la route (route en double, route statique masquée par une route variable) ;
+  les erreurs de syntaxe du motif et de méthode HTTP restent signalées en premier.
 
 ## [1.0.0] — 2026-11-06
 

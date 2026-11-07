@@ -139,8 +139,6 @@ final class RouteCollector implements ConfigureRoutes
         $this->addRoute(HttpMethod::Options, $route, $handler, $extraParameters);
     }
 
-    /** @inheritDoc */
-
     /**
      * Routes déclarées avec succès, dans l'ordre de déclaration, pour les lister (commande
      * routes:list…). Une entrée par méthode HTTP : addRoute(['GET', 'POST'], …) donne deux
@@ -166,6 +164,7 @@ final class RouteCollector implements ConfigureRoutes
         return $routes;
     }
 
+    /** @inheritDoc */
     #[Override]
     public function processedRoutes(): array
     {
