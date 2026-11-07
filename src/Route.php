@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Studoo\EduRoute;
 
 use function is_string;
+use function preg_last_error_msg;
 use function preg_match;
 use function preg_quote;
 
@@ -65,6 +66,11 @@ readonly class Route
     {
         $regex = '~^' . $this->regex . '$~';
 
-        return (bool) preg_match($regex, $str);
+        $matched = preg_match($regex, $str);
+        if ($matched === false) {
+            throw RegexMatchingFailed::whileCheckingShadowing($str, $this->regex, preg_last_error_msg());
+        }
+
+        return $matched === 1;
     }
 }

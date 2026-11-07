@@ -15,6 +15,11 @@ use Studoo\EduRoute\Dispatcher\Result\Matched;
 use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
 use Studoo\EduRoute\Dispatcher\Result\NotMatched;
 use Studoo\EduRoute\EduRoute;
+use Studoo\EduRoute\RegexMatchingFailed;
+
+use function ini_get;
+use function ini_set;
+use function str_repeat;
 
 /** @phpstan-import-type ExtraParameters from DataGenerator */
 abstract class DispatcherTestCase extends TestCase
@@ -167,6 +172,66 @@ abstract class DispatcherTestCase extends TestCase
             $r->addRoute('GET', '/user/{name}', 'handler0');
             $r->addRoute('GET', '/user/nikic', 'handler1');
         });
+    }
+
+    /**
+     * Un motif trop coûteux épuise la limite de PCRE : l'échec doit être signalé, et non
+     * renvoyer NotMatched (404 sans explication sur une URL valide, nikic/FastRoute#167).
+     */
+    #[PHPUnit\Test]
+    public function regexFailureDuringDispatchIsReported(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:(?:a?a?)*}/complicated', 'complicated');
+            $r->addRoute('GET', '/{p:a+}', 'a');
+        });
+
+        // Une URI courte reste servie normalement
+        $short = $dispatcher->dispatch('GET', '/aaa');
+        self::assertInstanceOf(Matched::class, $short);
+        self::assertSame('a', $short->handler);
+
+        $this->expectException(RegexMatchingFailed::class);
+        $this->expectExceptionMessageIsOrContains('Impossible de chercher la route de l\'URI "/' . str_repeat('a', 40) . '"');
+
+        $this->withBacktrackLimit(1000, static fn (): Matched|NotMatched|MethodNotAllowed => $dispatcher->dispatch('GET', '/' . str_repeat('a', 40)));
+    }
+
+    /**
+     * La vérification « route statique masquée par une route variable » ne doit pas conclure
+     * à tort qu'il n'y a pas de masquage quand PCRE échoue.
+     */
+    #[PHPUnit\Test]
+    public function regexFailureWhileCheckingShadowingIsReported(): void
+    {
+        $this->expectException(RegexMatchingFailed::class);
+        $this->expectExceptionMessageIsOrContains('Impossible de vérifier si la route statique "/' . str_repeat('a', 40) . 'b/complicated"');
+
+        $this->withBacktrackLimit(1000, fn (): Dispatcher => $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:(?:a?a?)*}/complicated', 'complicated');
+            $r->addRoute('GET', '/' . str_repeat('a', 40) . 'b/complicated', 'static');
+        }));
+    }
+
+    /**
+     * Exécute $callback avec une limite de retour arrière PCRE réduite (et le JIT désactivé,
+     * pour que la limite s'applique quelle que soit la configuration de PHP).
+     *
+     * @param Closure():mixed $callback
+     */
+    private function withBacktrackLimit(int $limit, Closure $callback): void
+    {
+        $backtrackLimit = ini_get('pcre.backtrack_limit');
+        $jit = ini_get('pcre.jit');
+        ini_set('pcre.backtrack_limit', (string) $limit);
+        ini_set('pcre.jit', '0');
+
+        try {
+            $callback();
+        } finally {
+            ini_set('pcre.backtrack_limit', (string) $backtrackLimit);
+            ini_set('pcre.jit', (string) $jit);
+        }
     }
 
     #[PHPUnit\Test]
