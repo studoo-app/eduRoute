@@ -9,3 +9,4 @@
 /Makefile       export-ignore
 /.editorconfig  export-ignore
 /composer-req*.json export-ignore
+/docs           export-ignore

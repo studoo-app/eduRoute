@@ -7,6 +7,15 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
 `studoo/edu-route` est un fork modernisé de [nikic/FastRoute](https://github.com/nikic/FastRoute)
 (branche `master`, commit `1c96139`, avril 2024). Pour migrer, voir [UPGRADE.md](UPGRADE.md).
 
+## [Non publié]
+
+### Documentation
+
+- Documentation complète en français et en anglais dans `docs/fr/` et `docs/en/` (11 pages
+  chacune : routes, dispatch, génération d'URL, attributs, listage, cache, middleware,
+  fonctionnement interne, erreurs, migration). Le README est désormais en anglais
+  (`README.fr.md` pour le français) ; `UPGRADE.md` renvoie vers les pages de migration.
+
 ## [1.1.0] — 2026-11-07
 
 ### Ajouté
