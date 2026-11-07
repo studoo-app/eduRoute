@@ -7,6 +7,26 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
 `studoo/edu-route` est un fork modernisé de [nikic/FastRoute](https://github.com/nikic/FastRoute)
 (branche `master`, commit `1c96139`, avril 2024). Pour migrer, voir [UPGRADE.md](UPGRADE.md).
 
+## [Non publié]
+
+### Ajouté
+
+- **Liste des routes déclarées**, pour écrire une commande `routes:list`
+  ([nikic/FastRoute#247](https://github.com/nikic/FastRoute/issues/247),
+  [#285](https://github.com/nikic/FastRoute/issues/285)) : `RouteCollector::declaredRoutes()` et
+  `EduRoute::declaredRoutes()` renvoient des objets `DeclaredRoute` (méthode, motif d'origine,
+  handler, nom, paramètres supplémentaires), dans l'ordre de déclaration, une entrée par
+  méthode HTTP. `DeclaredRoute::describeHandler()` donne un texte affichable du handler et
+  `isFallback()` repère les routes `any()`. Le format des données traitées et du cache ne
+  change pas.
+
+### Corrigé
+
+- Un nom de route invalide ou déjà utilisé est refusé **avant** l'enregistrement de la route :
+  si l'exception était attrapée, la route restait dispatchable. Quand la route et son nom sont
+  tous deux en double, l'exception levée est désormais celle du nom
+  (`Cannot register two routes under the name …`).
+
 ## [1.0.0] — 2026-11-06
 
 Première version. Par rapport à FastRoute :

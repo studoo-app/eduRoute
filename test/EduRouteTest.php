@@ -14,13 +14,16 @@ use RuntimeException;
 use Studoo\EduRoute\Cache;
 use Studoo\EduRoute\ConfigureRoutes;
 use Studoo\EduRoute\DataGenerator;
+use Studoo\EduRoute\DeclaredRoute;
 use Studoo\EduRoute\Dispatcher;
 use Studoo\EduRoute\EduRoute;
 use Studoo\EduRoute\GenerateUri;
 use Studoo\EduRoute\Test\Dispatcher\InternalParentDispatcher;
 
+use function array_map;
 use function bin2hex;
 use function file_exists;
+use function md5_file;
 use function random_bytes;
 use function sys_get_temp_dir;
 use function unlink;
@@ -267,5 +270,133 @@ final class EduRouteTest extends TestCase
                 unlink($cacheFile);
             }
         }
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesWithoutCache(): void
+    {
+        $router = EduRoute::recommendedSettings(static function (ConfigureRoutes $r): void {
+            $r->get('/', 'home', ['_name' => 'home']);
+            $r->addGroup('/blog', static function (ConfigureRoutes $r): void {
+                $r->get('/{slug}', 'post');
+            });
+        }, 'unused')->disableCache();
+
+        self::assertSame(
+            [['GET', '/', 'home', 'home'], ['GET', '/blog/{slug}', 'post', null]],
+            array_map(static fn (DeclaredRoute $d): array => [$d->method, $d->pattern, $d->handler, $d->name], $router->declaredRoutes()),
+        );
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesNeverTouchTheCache(): void
+    {
+        $cacheFile = sys_get_temp_dir() . '/edu-route-declared-' . bin2hex(random_bytes(4)) . '.php';
+
+        try {
+            $router = EduRoute::recommendedSettings($this->routes(...), $cacheFile);
+
+            self::assertCount(1, $router->declaredRoutes());
+            self::assertFileDoesNotExist($cacheFile, 'listing routes must not write the cache');
+
+            $router->dispatcher();
+            $hash = md5_file($cacheFile);
+            self::assertSame('/', $router->declaredRoutes()[0]->pattern);
+            self::assertSame($hash, md5_file($cacheFile));
+        } finally {
+            if (file_exists($cacheFile)) {
+                unlink($cacheFile);
+            }
+        }
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesNeverCallTheCacheDriver(): void
+    {
+        $cache = new class () implements Cache {
+            /** @inheritDoc */
+            #[Override]
+            public function get(string $key, Closure $loader): array
+            {
+                throw new RuntimeException('The cache must not be used to list routes');
+            }
+        };
+
+        $routes = EduRoute::recommendedSettings($this->routes(...), 'key')->withCache($cache, 'key')->declaredRoutes();
+
+        self::assertCount(1, $routes);
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesReflectCurrentCodeEvenWithStaleCache(): void
+    {
+        $cache = new class () implements Cache {
+            /** @inheritDoc */
+            #[Override]
+            public function get(string $key, Closure $loader): array
+            {
+                return [['GET' => ['/old' => ['old', []]]], [], []];
+            }
+        };
+
+        $router = EduRoute::recommendedSettings($this->routes(...), 'key')->withCache($cache, 'key');
+
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $router->dispatcher()->dispatch('GET', '/old'));
+        self::assertSame('/', $router->declaredRoutes()[0]->pattern);
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesAcceptClosureHandlersWithCacheEnabled(): void
+    {
+        $handler = static fn (): string => 'ok';
+        $cacheFile = sys_get_temp_dir() . '/edu-route-closure-' . bin2hex(random_bytes(4)) . '.php';
+        $routes = EduRoute::recommendedSettings(static function (ConfigureRoutes $r) use ($handler): void {
+            $r->get('/', $handler);
+        }, $cacheFile)->declaredRoutes();
+
+        self::assertSame($handler, $routes[0]->handler);
+        self::assertFileDoesNotExist($cacheFile);
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesAreIdenticalForEveryDispatcherStrategy(): void
+    {
+        $router = EduRoute::recommendedSettings(static function (ConfigureRoutes $r): void {
+            $r->get('/user/{id:\d+}[/{slug}]', 'user');
+            $r->post('/user', 'create');
+            $r->any('/{page:.*}', 'fallback');
+        }, 'unused')->disableCache();
+
+        $expected = $router->declaredRoutes();
+        self::assertCount(3, $expected);
+
+        foreach (
+            [
+                $router->useCharCountDispatcher(),
+                $router->useGroupCountDispatcher(),
+                $router->useGroupPosDispatcher(),
+                $router->useMarkDispatcher(),
+            ] as $configured
+        ) {
+            self::assertEquals($expected, $configured->declaredRoutes());
+        }
+    }
+
+    #[PHPUnit\Test]
+    public function declaredRoutesDoNotAffectTheDispatcher(): void
+    {
+        $calls = 0;
+        $router = EduRoute::recommendedSettings(static function (ConfigureRoutes $r) use (&$calls): void {
+            ++$calls;
+            $r->get('/', 'test');
+        }, 'unused')->disableCache();
+
+        $dispatcher = $router->dispatcher();
+        $router->declaredRoutes();
+        $router->declaredRoutes();
+
+        self::assertSame(3, $calls, 'the definition callback is replayed for each listing');
+        self::assertInstanceOf(Dispatcher\Result\Matched::class, $dispatcher->dispatch('GET', '/'));
+        self::assertSame($dispatcher::class, $router->dispatcher()::class);
     }
 }

@@ -14,7 +14,10 @@ use Closure;
  */
 interface ConfigureRoutes
 {
+    /** Clé de extraParameters qui donne un nom à la route (génération d'URL) */
     public const string ROUTE_NAME = '_name';
+
+    /** Clé réservée : motif d'origine de la route, préfixe de groupe inclus, toujours imposé par RouteCollector */
     public const string ROUTE_REGEX = '_route';
 
     /**

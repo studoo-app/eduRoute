@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Studoo\EduRoute\Attribute\AttributeRouteLoader;
 use Studoo\EduRoute\BadRouteException;
 use Studoo\EduRoute\ConfigureRoutes;
+use Studoo\EduRoute\DeclaredRoute;
 use Studoo\EduRoute\Dispatcher;
 use Studoo\EduRoute\Dispatcher\Result\Matched;
 use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
@@ -29,6 +30,7 @@ use Studoo\EduRoute\Test\Attribute\Fixture\RoutedEnum;
 use Studoo\EduRoute\Test\Attribute\Fixture\RouteGroupOnMethodController;
 use Studoo\EduRoute\Test\Attribute\Fixture\StaticRouteController;
 
+use function array_map;
 use function file_exists;
 use function unlink;
 
@@ -192,5 +194,25 @@ final class AttributeRouteLoaderTest extends TestCase
         self::assertInstanceOf(Matched::class, $show);
         self::assertSame(ArticleController::class . '::show', $show->handler);
         self::assertSame('/articles/{id:\\d+}', $show->extraParameters[ConfigureRoutes::ROUTE_REGEX]);
+    }
+
+    #[PHPUnit\Test]
+    public function attributeRoutesAreListed(): void
+    {
+        $routes = $this->router(ProductController::class)->declaredRoutes();
+
+        self::assertSame(
+            [
+                ['GET', '/admin/product', ProductController::class . '::index', 'admin.product.index', []],
+                ['GET', '/admin/product/{id:\d+}', ProductController::class . '::show', 'admin.product.show', ['section' => 'catalogue']],
+                ['PUT', '/admin/product/{id:\d+}', ProductController::class . '::update', 'admin.product.update', []],
+                ['PATCH', '/admin/product/{id:\d+}', ProductController::class . '::update', 'admin.product.update', []],
+                ['POST', '/admin/product/{id:\d+}/edit', ProductController::class . '::update', null, []],
+            ],
+            array_map(
+                static fn (DeclaredRoute $d): array => [$d->method, $d->pattern, $d->describeHandler(), $d->name, $d->extraParameters],
+                $routes,
+            ),
+        );
     }
 }
