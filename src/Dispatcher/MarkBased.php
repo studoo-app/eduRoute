@@ -5,7 +5,9 @@ namespace Studoo\EduRoute\Dispatcher;
 
 use Override;
 use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\RegexMatchingFailed;
 
+use function preg_last_error_msg;
 use function preg_match;
 
 final class MarkBased extends RegexBasedAbstract
@@ -15,7 +17,12 @@ final class MarkBased extends RegexBasedAbstract
     protected function dispatchVariableRoute(array $routeData, string $uri): ?Matched
     {
         foreach ($routeData as $data) {
-            if (preg_match($data['regex'], $uri, $matches) !== 1) {
+            $matched = preg_match($data['regex'], $uri, $matches);
+            if ($matched === false) {
+                throw RegexMatchingFailed::whileDispatching($uri, preg_last_error_msg());
+            }
+
+            if ($matched === 0) {
                 continue;
             }
 

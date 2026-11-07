@@ -15,6 +15,15 @@ use Studoo\EduRoute\Dispatcher\Result\Matched;
 use Studoo\EduRoute\Dispatcher\Result\MethodNotAllowed;
 use Studoo\EduRoute\Dispatcher\Result\NotMatched;
 use Studoo\EduRoute\EduRoute;
+use Studoo\EduRoute\RegexMatchingFailed;
+
+use function ini_get;
+use function ini_set;
+use function restore_error_handler;
+use function set_error_handler;
+use function str_repeat;
+
+use const E_WARNING;
 
 /** @phpstan-import-type ExtraParameters from DataGenerator */
 abstract class DispatcherTestCase extends TestCase
@@ -167,6 +176,102 @@ abstract class DispatcherTestCase extends TestCase
             $r->addRoute('GET', '/user/{name}', 'handler0');
             $r->addRoute('GET', '/user/nikic', 'handler1');
         });
+    }
+
+    /**
+     * Un motif trop coûteux épuise la limite de PCRE : l'échec doit être signalé, et non
+     * renvoyer NotMatched (404 sans explication sur une URL valide, nikic/FastRoute#167).
+     */
+    #[PHPUnit\Test]
+    public function regexFailureDuringDispatchIsReported(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:(?:a?a?)*}/complicated', 'complicated');
+            $r->addRoute('GET', '/{p:a+}', 'a');
+        });
+
+        // Une URI courte reste servie normalement
+        $short = $dispatcher->dispatch('GET', '/aaa');
+        self::assertInstanceOf(Matched::class, $short);
+        self::assertSame('a', $short->handler);
+
+        $this->expectException(RegexMatchingFailed::class);
+        $this->expectExceptionMessageIsOrContains('Impossible de chercher la route de l\'URI "/' . str_repeat('a', 40) . '"');
+
+        $this->withBacktrackLimit(1000, static fn (): Matched|NotMatched|MethodNotAllowed => $dispatcher->dispatch('GET', '/' . str_repeat('a', 40)));
+    }
+
+    /**
+     * La vérification « route statique masquée par une route variable » ne doit pas conclure
+     * à tort qu'il n'y a pas de masquage quand PCRE échoue.
+     */
+    #[PHPUnit\Test]
+    public function regexFailureWhileCheckingShadowingIsReported(): void
+    {
+        $this->expectException(RegexMatchingFailed::class);
+        $this->expectExceptionMessageIsOrContains('Impossible de vérifier si la route statique "/' . str_repeat('a', 40) . 'b/complicated"');
+
+        $this->withBacktrackLimit(1000, fn (): Dispatcher => $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:(?:a?a?)*}/complicated', 'complicated');
+            $r->addRoute('GET', '/' . str_repeat('a', 40) . 'b/complicated', 'static');
+        }));
+    }
+
+    /**
+     * Un motif de paramètre invalide (qui ne compile pas) casse tout le chunk : l'exception le dit,
+     * au lieu de conseiller d'augmenter les limites de PCRE.
+     */
+    #[PHPUnit\Test]
+    public function invalidParameterRegexIsReportedAsSuch(): void
+    {
+        $dispatcher = $this->createDispatcher(static function (ConfigureRoutes $r): void {
+            $r->addRoute('GET', '/{p:a)}', 'invalid');
+            $r->addRoute('GET', '/u/{id}', 'user');
+        });
+
+        try {
+            $this->withoutWarnings(static fn (): Matched|NotMatched|MethodNotAllowed => $dispatcher->dispatch('GET', '/u/1'));
+            self::fail('RegexMatchingFailed was expected');
+        } catch (RegexMatchingFailed $e) {
+            self::assertStringContainsString('(Internal error)', $e->getMessage());
+            self::assertStringContainsString('est sans doute invalide', $e->getMessage());
+            self::assertStringNotContainsString('backtrack_limit', $e->getMessage());
+        }
+    }
+
+    /**
+     * Exécute $callback avec une limite de retour arrière PCRE réduite. Le JIT de PCRE2 applique
+     * aussi cette limite : pas besoin de le désactiver (ce qui, de toute façon, ne vaudrait que pour
+     * les motifs compilés ensuite, PHP gardant les motifs compilés en cache).
+     *
+     * @param Closure():mixed $callback
+     */
+    private function withBacktrackLimit(int $limit, Closure $callback): void
+    {
+        $backtrackLimit = ini_get('pcre.backtrack_limit');
+        ini_set('pcre.backtrack_limit', (string) $limit);
+
+        try {
+            $callback();
+        } finally {
+            ini_set('pcre.backtrack_limit', (string) $backtrackLimit);
+        }
+    }
+
+    /**
+     * Exécute $callback en ignorant les avertissements PHP (preg_match() en émet un quand le motif ne compile pas).
+     *
+     * @param Closure():mixed $callback
+     */
+    private function withoutWarnings(Closure $callback): void
+    {
+        set_error_handler(static fn (): bool => true, E_WARNING);
+
+        try {
+            $callback();
+        } finally {
+            restore_error_handler();
+        }
     }
 
     #[PHPUnit\Test]

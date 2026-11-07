@@ -5,9 +5,11 @@ namespace Studoo\EduRoute\Dispatcher;
 
 use Override;
 use Studoo\EduRoute\Dispatcher\Result\Matched;
+use Studoo\EduRoute\RegexMatchingFailed;
 
 use function assert;
 use function end;
+use function preg_last_error_msg;
 use function preg_match;
 
 final class CharCountBased extends RegexBasedAbstract
@@ -19,7 +21,12 @@ final class CharCountBased extends RegexBasedAbstract
         foreach ($routeData as $data) {
             assert(isset($data['suffix']));
 
-            if (preg_match($data['regex'], $uri . $data['suffix'], $matches) !== 1) {
+            $matched = preg_match($data['regex'], $uri . $data['suffix'], $matches);
+            if ($matched === false) {
+                throw RegexMatchingFailed::whileDispatching($uri, preg_last_error_msg());
+            }
+
+            if ($matched === 0) {
                 continue;
             }
 

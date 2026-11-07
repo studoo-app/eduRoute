@@ -7,7 +7,7 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
 `studoo/edu-route` est un fork modernisé de [nikic/FastRoute](https://github.com/nikic/FastRoute)
 (branche `master`, commit `1c96139`, avril 2024). Pour migrer, voir [UPGRADE.md](UPGRADE.md).
 
-## [Non publié]
+## [1.1.0] — 2026-11-07
 
 ### Ajouté
 
@@ -27,6 +27,19 @@ le [versionnage sémantique](https://semver.org/lang/fr/).
   le nom (vide, pas une chaîne, déjà utilisé) est désormais signalée avant les erreurs
   d'enregistrement de la route (route en double, route statique masquée par une route variable) ;
   les erreurs de syntaxe du motif et de méthode HTTP restent signalées en premier.
+
+## [1.0.1] — 2026-11-07
+
+### Corrigé
+
+- Quand le moteur d'expressions régulières échouait en cherchant une route (limite de retour
+  arrière `pcre.backtrack_limit` ou pile JIT épuisée par un motif coûteux comme
+  `{p:(?:a?a?)*}`), l'échec passait pour une absence de route : une URL valide recevait un 404
+  sans explication. Les quatre dispatchers lèvent désormais `RegexMatchingFailed`, avec l'URI
+  et l'erreur PCRE. La vérification des routes statiques masquées par une route variable
+  signale aussi l'échec au lieu de conclure qu'il n'y a pas de masquage. Un motif de paramètre
+  qui ne compile pas (par exemple `{p:a)}`) est signalé comme invalide. Bug hérité de
+  FastRoute ([nikic/FastRoute#167](https://github.com/nikic/FastRoute/issues/167)).
 
 ## [1.0.0] — 2026-11-06
 
